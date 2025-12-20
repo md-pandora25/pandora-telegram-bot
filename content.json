@@ -1,0 +1,30 @@
+{
+  "welcome_message": "Welcome to Pandora. Choose what you need below:",
+  "presentations": [
+    { "title": "Pandora Intro Video", "url": "https://example.com/intro" },
+    { "title": "Copy Trading Overview", "url": "https://example.com/overview" }
+  ],
+  "documents": [
+    { "title": "Pandora PDF Deck", "url": "https://example.com/deck.pdf" },
+    { "title": "FAQ Document", "url": "https://example.com/faq" }
+  ],
+  "join_text": "🤝 How to Join\n\n1) Get access link\n2) Create account\n3) Choose strategy\n4) Start copy trading\n\n(Replace this with your real steps + link.)",
+  "support_text": "🧑‍💻 Support\n\nIf you need help, contact your sponsor or message the admins.\n\n(Replace with your support handle/link.)",
+  "faq": [
+    {
+      "q": "What is copy trading?",
+      "a": "Copy trading means your account automatically mirrors trades from a strategy provider. You stay in control of your account settings and risk limits.",
+      "link": "https://example.com/copytrading"
+    },
+    {
+      "q": "What is an amplified or instant funded account?",
+      "a": "An amplified (instant funded) account is where your deposited value is multiplied for trading purposes, while risk controls still apply.",
+      "link": "https://example.com/amplified"
+    },
+    {
+      "q": "Where do I see updates?",
+      "a": "Updates are typically shared in the community Telegram channel and in official performance reports.",
+      "link": "https://example.com/updates"
+    }
+  ]
+}
