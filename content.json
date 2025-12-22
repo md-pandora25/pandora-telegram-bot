@@ -10,6 +10,9 @@
   ],
   "join_text": "🤝 How to Join\n\n1) Get access link\n2) Create account\n3) Choose strategy\n4) Start copy trading\n\n(Replace this with your real steps + link.)",
   "support_text": "🧑‍💻 Support\n\nIf you need help, contact your sponsor or message the admins.\n\n(Replace with your support handle/link.)",
+  "disclaimer_text": "⚠️ Disclaimer\n\nThis bot provides general information only and does not constitute financial advice. Trading involves risk and you may lose money. Past performance is not indicative of future results. Always do your own research and consider seeking independent advice.\n\n(Replace this text with your official disclaimer.)",
+  "disclaimer_image_url": "https://drive.google.com/file/d/1IBv7B7mN2p9wROBcbIXjdXhjHg4az3t2/view?usp=drive_link"
+
   "faq": [
     {
       "q": "What is copy trading?",
@@ -28,3 +31,4 @@
     }
   ]
 }
+
