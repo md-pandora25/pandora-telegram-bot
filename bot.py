@@ -42,6 +42,14 @@ def build_main_menu() -> InlineKeyboardMarkup:
 def back_to_menu_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")]])
 
+def join_steps_kb() -> InlineKeyboardMarkup:
+    keyboard = [
+        [InlineKeyboardButton("🤝 Step One – Register and Trade", callback_data="join:step1")],
+        [InlineKeyboardButton("🗣 Step Two – Become an Affiliate", callback_data="join:step2")],
+        [InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")],
+    ]
+    return InlineKeyboardMarkup(keyboard)
+
 
 def faq_list_kb(faq_items: List[Dict[str, str]]) -> InlineKeyboardMarkup:
     keyboard = []
@@ -140,9 +148,14 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     if action == "join":
-        join_text = content.get("join_text", "🤝 How to Join\n\nAdd your join steps here.")
-        await safe_show_menu_message(query, context, join_text, back_to_menu_kb())
-        return
+    await safe_show_menu_message(
+        query,
+        context,
+        "🤝 How to Join\n\nChoose an option:",
+        join_steps_kb()
+    )
+    return
+
 
     if action == "support":
         support_text = content.get("support_text", "🧑‍💻 Support\n\nAdd support instructions here.")
@@ -208,6 +221,30 @@ async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     await safe_show_menu_message(query, context, text, back_to_menu_kb())
 
+async def on_join_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+
+    content = load_content()
+    action = query.data.split(":", 1)[1]
+
+    if action == "step1":
+        text = content.get(
+            "join_step1_text",
+            "✅ Step One – Register and Trade\n\n(Configure join_step1_text in content.json)"
+        )
+        await safe_show_menu_message(query, context, text, join_steps_kb())
+        return
+
+    if action == "step2":
+        text = content.get(
+            "join_step2_text",
+            "🤝 Step Two – Become an Affiliate\n\n(Configure join_step2_text in content.json)"
+        )
+        await safe_show_menu_message(query, context, text, join_steps_kb())
+        return
+
+    await safe_show_menu_message(query, context, "Unknown option.", join_steps_kb())
 
 def normalize(text: str) -> str:
     return " ".join(text.lower().strip().split())
@@ -271,6 +308,7 @@ def main() -> None:
     app.add_handler(CommandHandler("help", help_cmd))
 
     app.add_handler(CallbackQueryHandler(on_menu_click, pattern=r"^menu:"))
+    app.add_handler(CallbackQueryHandler(on_join_click, pattern=r"^join:"))
     app.add_handler(CallbackQueryHandler(on_faq_click, pattern=r"^faq:"))
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text_message))
@@ -281,3 +319,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
