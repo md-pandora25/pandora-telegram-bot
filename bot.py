@@ -22,12 +22,20 @@ logger = logging.getLogger("pandora_faq_bot")
 DATA_FILE = "content.json"
 
 
+# -----------------------------
+# Content loading
+# -----------------------------
 def load_content() -> Dict[str, Any]:
     with open(DATA_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
+# -----------------------------
+# Keyboards / Menus
+# -----------------------------
 def build_main_menu() -> InlineKeyboardMarkup:
+    # Requested order:
+    # Presentations, How To Join, Corporate Info, FAQ, Support, Disclaimer
     keyboard = [
         [InlineKeyboardButton("🎥 Presentations", callback_data="menu:presentations")],
         [InlineKeyboardButton("🤝 How to Join", callback_data="menu:join")],
@@ -40,12 +48,15 @@ def build_main_menu() -> InlineKeyboardMarkup:
 
 
 def back_to_menu_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")]])
+    return InlineKeyboardMarkup(
+        [[InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")]]
+    )
+
 
 def join_steps_kb() -> InlineKeyboardMarkup:
     keyboard = [
-        [InlineKeyboardButton("🤝 Step One – Register and Trade", callback_data="join:step1")],
-        [InlineKeyboardButton("🗣 Step Two – Become an Affiliate", callback_data="join:step2")],
+        [InlineKeyboardButton("✅ Step One – Register and Trade", callback_data="join:step1")],
+        [InlineKeyboardButton("🤝 Step Two – Become an Affiliate", callback_data="join:step2")],
         [InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")],
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -54,7 +65,9 @@ def join_steps_kb() -> InlineKeyboardMarkup:
 def faq_list_kb(faq_items: List[Dict[str, str]]) -> InlineKeyboardMarkup:
     keyboard = []
     for i, item in enumerate(faq_items):
-        keyboard.append([InlineKeyboardButton(item.get("q", f"FAQ {i+1}"), callback_data=f"faq:{i}")])
+        keyboard.append(
+            [InlineKeyboardButton(item.get("q", f"FAQ {i+1}"), callback_data=f"faq:{i}")]
+        )
     keyboard.append([InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")])
     return InlineKeyboardMarkup(keyboard)
 
@@ -66,11 +79,15 @@ def links_list_kb(items: List[Dict[str, str]], back_target: str) -> InlineKeyboa
         url = item.get("url", "")
         if url:
             keyboard.append([InlineKeyboardButton(title, url=url)])
+
     keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data=f"menu:{back_target}")])
     keyboard.append([InlineKeyboardButton("🏠 Home", callback_data="menu:home")])
     return InlineKeyboardMarkup(keyboard)
 
 
+# -----------------------------
+# Safe render helper
+# -----------------------------
 async def safe_show_menu_message(
     query,
     context: ContextTypes.DEFAULT_TYPE,
@@ -78,17 +95,20 @@ async def safe_show_menu_message(
     reply_markup: InlineKeyboardMarkup
 ) -> None:
     """
-    Try to edit the current message into a menu.
-    If that fails (e.g., current message is a photo/caption), send a new message.
+    Try to edit the current message into a text menu.
+    If that fails (e.g., current message is a photo), send a new message instead.
     """
     chat_id = query.message.chat.id
     try:
         await query.edit_message_text(text, reply_markup=reply_markup)
     except Exception as e:
-        logger.warning("edit_message_text failed, sending new menu message instead: %s", e)
+        logger.warning("edit_message_text failed, sending new message instead: %s", e)
         await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
 
 
+# -----------------------------
+# Commands
+# -----------------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     content = load_content()
     welcome = content.get("welcome_message", "Welcome! Choose an option below.")
@@ -103,6 +123,9 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+# -----------------------------
+# Callback handlers
+# -----------------------------
 async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -115,16 +138,8 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             query,
             context,
             content.get("welcome_message", "Choose an option:"),
-            build_main_menu()
+            build_main_menu(),
         )
-        return
-
-    if action == "faq":
-        faq_items = content.get("faq", [])
-        if not faq_items:
-            await safe_show_menu_message(query, context, "No FAQs configured yet.", back_to_menu_kb())
-            return
-        await safe_show_menu_message(query, context, "Select a question:", faq_list_kb(faq_items))
         return
 
     if action == "presentations":
@@ -137,7 +152,17 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await safe_show_menu_message(query, context, text, links_list_kb(items, back_target="home"))
         return
 
+    if action == "join":
+        await safe_show_menu_message(
+            query,
+            context,
+            "🤝 How to Join\n\nChoose an option:",
+            join_steps_kb()
+        )
+        return
+
     if action == "corporate":
+        # Uses the existing "documents" list in content.json, displayed as Corporate Info
         items = content.get("documents", [])
         text = "🏢 Corporate Info"
         if not items:
@@ -147,15 +172,13 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await safe_show_menu_message(query, context, text, links_list_kb(items, back_target="home"))
         return
 
-    if action == "join":
-    await safe_show_menu_message(
-        query,
-        context,
-        "🤝 How to Join\n\nChoose an option:",
-        join_steps_kb()
-    )
-    return
-
+    if action == "faq":
+        faq_items = content.get("faq", [])
+        if not faq_items:
+            await safe_show_menu_message(query, context, "No FAQs configured yet.", back_to_menu_kb())
+            return
+        await safe_show_menu_message(query, context, "Select a question:", faq_list_kb(faq_items))
+        return
 
     if action == "support":
         support_text = content.get("support_text", "🧑‍💻 Support\n\nAdd support instructions here.")
@@ -163,10 +186,9 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     if action == "disclaimer":
-        # You said you want to keep the caption for extra information.
+        # Sends photo + caption (caption comes from disclaimer_text)
         disclaimer_image_url = (content.get("disclaimer_image_url") or "").strip()
         disclaimer_caption = (content.get("disclaimer_text") or "").strip()
-
         chat_id = query.message.chat.id
 
         if not disclaimer_image_url:
@@ -177,8 +199,6 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             )
             return
 
-        # Send as a new message (photo messages can't be edited into menus later).
-        # Caption is optional; Telegram caption length limits apply.
         if disclaimer_caption:
             await context.bot.send_photo(
                 chat_id=chat_id,
@@ -196,30 +216,6 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     await safe_show_menu_message(query, context, "Unknown option.", build_main_menu())
 
-
-async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer()
-
-    content = load_content()
-    faq_items = content.get("faq", [])
-
-    try:
-        idx = int(query.data.split(":", 1)[1])
-        item = faq_items[idx]
-    except Exception:
-        await safe_show_menu_message(query, context, "Couldn’t find that FAQ item.", back_to_menu_kb())
-        return
-
-    q = item.get("q", "Question")
-    a = item.get("a", "Answer")
-    extra = (item.get("link", "") or "").strip()
-
-    text = f"{q}\n\n{a}"
-    if extra:
-        text += f"\n\nMore info: {extra}"
-
-    await safe_show_menu_message(query, context, text, back_to_menu_kb())
 
 async def on_join_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -246,6 +242,35 @@ async def on_join_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     await safe_show_menu_message(query, context, "Unknown option.", join_steps_kb())
 
+
+async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+
+    content = load_content()
+    faq_items = content.get("faq", [])
+
+    try:
+        idx = int(query.data.split(":", 1)[1])
+        item = faq_items[idx]
+    except Exception:
+        await safe_show_menu_message(query, context, "Couldn’t find that FAQ item.", back_to_menu_kb())
+        return
+
+    q = item.get("q", "Question")
+    a = item.get("a", "Answer")
+    extra = (item.get("link", "") or "").strip()
+
+    text = f"{q}\n\n{a}"
+    if extra:
+        text += f"\n\nMore info: {extra}"
+
+    await safe_show_menu_message(query, context, text, back_to_menu_kb())
+
+
+# -----------------------------
+# Simple FAQ matching for typed questions
+# -----------------------------
 def normalize(text: str) -> str:
     return " ".join(text.lower().strip().split())
 
@@ -297,6 +322,9 @@ async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await update.message.reply_text(text, reply_markup=build_main_menu())
 
 
+# -----------------------------
+# Main
+# -----------------------------
 def main() -> None:
     token = (os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip()
     if not token:
@@ -319,4 +347,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
