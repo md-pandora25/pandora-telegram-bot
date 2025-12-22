@@ -1,8 +1,8 @@
 {
-  "welcome_message": "Welcome to the Pandora AI Community Bot! Please select from the menu below to allow me to assist you.",
+  "welcome_message": "Welcome to the Pandora AI Community Bot! Please select from the menu below to allow me to assist you. 😊",
   "presentations": [
     { "title": "Pandora AI Intro Video", "url": "https://www.youtube.com/watch?v=ugryotNp__4&t=9s" },
-    { "title": "Pandora AI PDF", "url": "https://drive.google.com/file/d/1cKGj5VPMz2nmj9EWdhI0rZQguuMjVPTI/view?usp=sharing" }
+    { "title": "Pandora AI Intro PDF", "url": "https://drive.google.com/file/d/1cKGj5VPMz2nmj9EWdhI0rZQguuMjVPTI/view?usp=sharing" }
   ],
   "documents": [
     { "title": "Broker Group Overview (PDF)", "url": "https://drive.google.com/file/d/1dB_HRnPgCKV3fCevbMNgeSPrcVl9KFTX/view?usp=sharing" },
@@ -10,10 +10,10 @@
     { "title": "Broker A vs B (PDF)", "url": "https://drive.google.com/file/d/16vssIYt3zI5KKPk9fvfYIwAr5XsfsI-5/view?usp=sharing" },
     { "title": "Summary (DOC)", "url": "https://docs.google.com/document/d/1OazgRdYMp4kc03vrpyVf8fDYS8e2Cmau/edit?usp=sharing&ouid=107570889884048252814&rtpof=true&sd=true" }
   ],
-  "join_text": "🤝 How to Join - STEP ONE\n\n1) Grab your referral link\n2) Register and purchase an account\n3) Connect to a strategy\n4) Start making profit\n\nFollow this detailed step by step guide\n🔗https://drive.google.com/file/d/1d3hpel1Oho62JOAbmm0MXgrXhq7JeHvq/view",
-  "support_text": "🧑‍💻 Support\n\nIf you need help, contact your sponsor or message the admins.\n\n(Replace with your support contact/link.)",
+  "join_text": "🤝 How to Join - STEP ONE - Register and Trade\n\n1) Grab your referral link\n2) Register and purchase an account\n3) Connect to a strategy\n4) Start making profit💰💰\n\n🔗Follow this detailed step by step guide\nhttps://drive.google.com/file/d/1d3hpel1Oho62JOAbmm0MXgrXhq7JeHvq/view",
+  "support_text": "🧑‍💻 Support\n\nIf you need help, contact the person who referred you initially. If you have an issue with your brokerage trading account then please feel free to use the dedicated support bot which has been provided soley for this communities use and manned by dedicated members of the brokers support team.\n\n🤖https://t.me/Axisvip_bot",
   "disclaimer_text": "⚠️ Disclaimer\n\nThis bot provides general information only and does not constitute financial advice. Trading involves risk and you may lose money. Past performance is not indicative of future results. Always do your own research and consider seeking independent advice.\n\n(Replace this text with your official disclaimer.)",
-  "disclaimer_image_url": "https://drive.google.com/file/d/1IBv7B7mN2p9wROBcbIXjdXhjHg4az3t2/view?usp=sharing",
+  "disclaimer_image_url": "https://drive.google.com/uc?export=download&id=1IBv7B7mN2p9wROBcbIXjdXhjHg4az3t2",
   "faq": [
     {
       "q": "What is copy trading?",
@@ -32,6 +32,7 @@
     }
   ]
 }
+
 
 
 
