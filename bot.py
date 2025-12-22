@@ -3,11 +3,7 @@ import json
 import logging
 from typing import Dict, Any, List, Tuple
 
-from telegram import (
-    Update,
-    InlineKeyboardButton,
-    InlineKeyboardMarkup,
-)
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
     Application,
     CommandHandler,
@@ -26,17 +22,12 @@ logger = logging.getLogger("pandora_faq_bot")
 DATA_FILE = "content.json"
 
 
-# -----------------------------
-# Content loading
-# -----------------------------
 def load_content() -> Dict[str, Any]:
     with open(DATA_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
 
 def build_main_menu() -> InlineKeyboardMarkup:
-    # Requested order:
-    # Presentations, How To Join, Corporate Info, FAQ, Support, Disclaimer
     keyboard = [
         [InlineKeyboardButton("🎥 Presentations", callback_data="menu:presentations")],
         [InlineKeyboardButton("🤝 How to Join", callback_data="menu:join")],
@@ -49,9 +40,7 @@ def build_main_menu() -> InlineKeyboardMarkup:
 
 
 def back_to_menu_kb() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup(
-        [[InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")]]
-    )
+    return InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")]])
 
 
 def faq_list_kb(faq_items: List[Dict[str, str]]) -> InlineKeyboardMarkup:
@@ -74,9 +63,24 @@ def links_list_kb(items: List[Dict[str, str]], back_target: str) -> InlineKeyboa
     return InlineKeyboardMarkup(keyboard)
 
 
-# -----------------------------
-# Handlers
-# -----------------------------
+async def safe_show_menu_message(
+    query,
+    context: ContextTypes.DEFAULT_TYPE,
+    text: str,
+    reply_markup: InlineKeyboardMarkup
+) -> None:
+    """
+    Try to edit the current message into a menu.
+    If that fails (e.g., current message is a photo/caption), send a new message.
+    """
+    chat_id = query.message.chat.id
+    try:
+        await query.edit_message_text(text, reply_markup=reply_markup)
+    except Exception as e:
+        logger.warning("edit_message_text failed, sending new menu message instead: %s", e)
+        await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     content = load_content()
     welcome = content.get("welcome_message", "Welcome! Choose an option below.")
@@ -99,21 +103,20 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     action = query.data.split(":", 1)[1]
 
     if action == "home":
-    # Photo messages can't be edited into a text menu reliably.
-    # So we send a fresh menu message instead.
-    await context.bot.send_message(
-        chat_id=query.message.chat.id,
-        text=content.get("welcome_message", "Choose an option:"),
-        reply_markup=build_main_menu(),
-    )
-    return
+        await safe_show_menu_message(
+            query,
+            context,
+            content.get("welcome_message", "Choose an option:"),
+            build_main_menu()
+        )
+        return
 
     if action == "faq":
         faq_items = content.get("faq", [])
         if not faq_items:
-            await query.edit_message_text("No FAQs configured yet.", reply_markup=back_to_menu_kb())
+            await safe_show_menu_message(query, context, "No FAQs configured yet.", back_to_menu_kb())
             return
-        await query.edit_message_text("Select a question:", reply_markup=faq_list_kb(faq_items))
+        await safe_show_menu_message(query, context, "Select a question:", faq_list_kb(faq_items))
         return
 
     if action == "presentations":
@@ -121,58 +124,64 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         text = "🎥 Presentations"
         if not items:
             text += "\n\nNo presentation links added yet."
-            await query.edit_message_text(text, reply_markup=back_to_menu_kb())
+            await safe_show_menu_message(query, context, text, back_to_menu_kb())
             return
-        await query.edit_message_text(text, reply_markup=links_list_kb(items, back_target="home"))
+        await safe_show_menu_message(query, context, text, links_list_kb(items, back_target="home"))
         return
 
     if action == "corporate":
-        # Uses the existing "documents" list in content.json, but displays it as Corporate Info
         items = content.get("documents", [])
         text = "🏢 Corporate Info"
         if not items:
             text += "\n\nNo corporate info links added yet."
-            await query.edit_message_text(text, reply_markup=back_to_menu_kb())
+            await safe_show_menu_message(query, context, text, back_to_menu_kb())
             return
-        await query.edit_message_text(text, reply_markup=links_list_kb(items, back_target="home"))
+        await safe_show_menu_message(query, context, text, links_list_kb(items, back_target="home"))
         return
 
     if action == "join":
         join_text = content.get("join_text", "🤝 How to Join\n\nAdd your join steps here.")
-        await query.edit_message_text(join_text, reply_markup=back_to_menu_kb())
+        await safe_show_menu_message(query, context, join_text, back_to_menu_kb())
         return
 
     if action == "support":
         support_text = content.get("support_text", "🧑‍💻 Support\n\nAdd support instructions here.")
-        await query.edit_message_text(support_text, reply_markup=back_to_menu_kb())
+        await safe_show_menu_message(query, context, support_text, back_to_menu_kb())
         return
 
     if action == "disclaimer":
-        disclaimer_text = content.get(
-            "disclaimer_text",
-            "⚠️ Disclaimer\n\n(Disclaimer text not set.)"
-        )
+        # You said you want to keep the caption for extra information.
         disclaimer_image_url = (content.get("disclaimer_image_url") or "").strip()
+        disclaimer_caption = (content.get("disclaimer_text") or "").strip()
 
-        # Safer pattern: send a NEW message (photo or text) rather than editing the menu message.
         chat_id = query.message.chat.id
 
-        if disclaimer_image_url:
+        if not disclaimer_image_url:
+            await context.bot.send_message(
+                chat_id=chat_id,
+                text="Disclaimer image is not configured yet. Please contact support.",
+                reply_markup=back_to_menu_kb()
+            )
+            return
+
+        # Send as a new message (photo messages can't be edited into menus later).
+        # Caption is optional; Telegram caption length limits apply.
+        if disclaimer_caption:
             await context.bot.send_photo(
                 chat_id=chat_id,
                 photo=disclaimer_image_url,
-                caption=disclaimer_text[:1024],
+                caption=disclaimer_caption[:1024],
                 reply_markup=back_to_menu_kb()
             )
         else:
-            await context.bot.send_message(
+            await context.bot.send_photo(
                 chat_id=chat_id,
-                text=disclaimer_text,
+                photo=disclaimer_image_url,
                 reply_markup=back_to_menu_kb()
             )
         return
 
-    await query.edit_message_text("Unknown option.", reply_markup=build_main_menu())
+    await safe_show_menu_message(query, context, "Unknown option.", build_main_menu())
 
 
 async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -186,7 +195,7 @@ async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         idx = int(query.data.split(":", 1)[1])
         item = faq_items[idx]
     except Exception:
-        await query.edit_message_text("Couldn’t find that FAQ item.", reply_markup=back_to_menu_kb())
+        await safe_show_menu_message(query, context, "Couldn’t find that FAQ item.", back_to_menu_kb())
         return
 
     q = item.get("q", "Question")
@@ -197,7 +206,7 @@ async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if extra:
         text += f"\n\nMore info: {extra}"
 
-    await query.edit_message_text(text, reply_markup=back_to_menu_kb())
+    await safe_show_menu_message(query, context, text, back_to_menu_kb())
 
 
 def normalize(text: str) -> str:
@@ -251,9 +260,6 @@ async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await update.message.reply_text(text, reply_markup=build_main_menu())
 
 
-# -----------------------------
-# Main
-# -----------------------------
 def main() -> None:
     token = (os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip()
     if not token:
@@ -275,4 +281,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
