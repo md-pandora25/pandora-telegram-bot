@@ -1,23 +1,25 @@
 {
-  "welcome_message": "Welcome to Pandora. Choose what you need below:",
+  "welcome_message": "Welcome to the Pandora AI community Bot 😊. Please select from the below menu so I can do my best to assist you",
 
   "presentations": [
-    { "title": "Pandora Intro Video", "url": "https://example.com/intro" },
-    { "title": "Copy Trading Overview", "url": "https://example.com/overview" }
+    { "title": "Pandora Intro Video", "url": "https://www.youtube.com/watch?v=ugryotNp__4&t=11s" },
+    { "title": "Pandora Intro PDF", "url": "https://drive.google.com/file/d/1cKGj5VPMz2nmj9EWdhI0rZQguuMjVPTI/view" }
   ],
 
   "documents": [
-    { "title": "Corporate Overview", "url": "https://example.com/corporate" },
-    { "title": "Company Deck (PDF)", "url": "https://example.com/deck.pdf" }
+    { "title": "Axis Group Overview (PDF)", "url": "https://drive.google.com/file/d/1dB_HRnPgCKV3fCevbMNgeSPrcVl9KFTX/view" },
+    { "title": "Axis Capital Platform (PDF)", "url": "https://drive.google.com/file/d/1ULpSi5B-spW4RXOJVsBvSrTlZuJMU_IF/view" },
+    { "title": "Axis Capital Broker A vs B (PDF)", "url": "https://drive.google.com/file/d/16vssIYt3zI5KKPk9fvfYIwAr5XsfsI-5/view" },
+    { "title": "Axis Summary (DOC)", "url": "https://example.com/deck.pdf" }
   ],
 
   "join_step1_text": "🤝 Step One – Register and Trade\n\n1) Grab your referral link\n2) Register and purchase your account\n3) Connect your account to a strategy\n4) Start enjoying profits! 💰💰\n\n🔗 Follow the setup steps in this document\nhttps://drive.google.com/file/d/1d3hpel1Oho62JOAbmm0MXgrXhq7JeHvq/view",
 
   "join_step2_text": "🗣 Step Two – Become an Affiliate\n\nYOU MUST HAVE COMPLETED STEP ONE FIRST!!\n\n1) Get your sponsors Affiliate link\n2) Complete the application process\n3) Receive your approval within 24 hours\n\n🔗 Follow the application steps in this guide\nhttps://drive.google.com/file/d/1lhdNSD0FFwrNtgzwUb5_liQrW8E--WaN/view",
 
-  "support_text": "🧑‍💻 Support\n\nIf you need help, contact your sponsor or message the admins.\n\n(Replace with your support contact/link.)",
+  "support_text": "🧑‍💻 Support\n\nIf you need help, please contact your referrer initially. If you have registered or are an affiliate and you have an issue or query with your Axis Brokerage account feel free to use the dedicated support bot. 🤖 \nthis dedicated bot was provide by the broker for the sole use of the Pandora AI community. It is manned by support staff dedicated to help our community members, The bot is not manned 24 hours a day at this stage, so please be patient.\n\n🤖https://t.me/Axisvip_bot",
 
-  "disclaimer_text": "Terms of Use / General Terms and Conditions\n\nTap Back to menu to continue.",
+  "disclaimer_text": "⚠️ DISCLAIMER \n\n Please ensure you read the attached disclaimer! \nThis bot or platform does not provide financial advice, but is a tool to help provide or guide you to the support you require.\n\n 📚Always do your own research!!📚",
 
   "disclaimer_image_url": "https://drive.google.com/uc?export=download&id=1IBv7B7mN2p9wROBcbIXjdXhjHg4az3t2",
 
@@ -25,20 +27,19 @@
     {
       "q": "What is copy trading?",
       "a": "Copy trading means your account automatically mirrors trades from a strategy provider. You stay in control of your account settings and risk limits.",
-      "link": "https://example.com/copytrading"
     },
     {
       "q": "What is an amplified or instant funded account?",
       "a": "An amplified (instant funded) account is where your deposited value is multiplied for trading purposes, while risk controls still apply.",
-      "link": "https://example.com/amplified"
-    },
+     },
     {
       "q": "Where do I see updates?",
-      "a": "Updates are typically shared in the community Telegram channel and in official performance reports.",
-      "link": "https://example.com/updates"
+      "a": "For the latest News, Updates, Strategy Performance and other key information please ensure you have subscribed to the official Pandora AI Telegram group.",
+      "link": "https://t.me/Pandora_AI_info"
     }
   ]
 }
+
 
 
 
