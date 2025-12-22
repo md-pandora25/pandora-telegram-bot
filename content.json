@@ -1,17 +1,19 @@
 {
-  "welcome_message": "Welcome to Pandora. Choose what you need below:",
+  "welcome_message": "Welcome to the Pandora AI Community Bot! Please select from the menu below to allow me to assist you.",
   "presentations": [
-    { "title": "Pandora Intro Video", "url": "https://example.com/intro" },
-    { "title": "Copy Trading Overview", "url": "https://example.com/overview" }
+    { "title": "Pandora AI Intro Video", "url": "https://www.youtube.com/watch?v=ugryotNp__4&t=9s" },
+    { "title": "Pandora AI PDF", "url": "https://drive.google.com/file/d/1cKGj5VPMz2nmj9EWdhI0rZQguuMjVPTI/view?usp=sharing" }
   ],
   "documents": [
-    { "title": "Corporate Overview", "url": "https://example.com/corporate" },
-    { "title": "Company Deck (PDF)", "url": "https://example.com/deck.pdf" }
+    { "title": "Broker Group Overview (PDF)", "url": "https://drive.google.com/file/d/1dB_HRnPgCKV3fCevbMNgeSPrcVl9KFTX/view?usp=sharing" },
+    { "title": "Broker Capital Platform (PDF)", "url": "https://drive.google.com/file/d/1ULpSi5B-spW4RXOJVsBvSrTlZuJMU_IF/view?usp=sharing" },
+    { "title": "Broker A vs B (PDF)", "url": "https://drive.google.com/file/d/16vssIYt3zI5KKPk9fvfYIwAr5XsfsI-5/view?usp=sharing" },
+    { "title": "Summary (DOC)", "url": "https://docs.google.com/document/d/1OazgRdYMp4kc03vrpyVf8fDYS8e2Cmau/edit?usp=sharing&ouid=107570889884048252814&rtpof=true&sd=true" }
   ],
   "join_text": "🤝 How to Join\n\n1) Get your access link\n2) Create your account\n3) Choose your strategy\n4) Follow the setup steps\n\n(Replace with your official steps + link.)",
   "support_text": "🧑‍💻 Support\n\nIf you need help, contact your sponsor or message the admins.\n\n(Replace with your support contact/link.)",
   "disclaimer_text": "⚠️ Disclaimer\n\nThis bot provides general information only and does not constitute financial advice. Trading involves risk and you may lose money. Past performance is not indicative of future results. Always do your own research and consider seeking independent advice.\n\n(Replace this text with your official disclaimer.)",
-  "disclaimer_image_url": "",
+  "disclaimer_image_url": "https://drive.google.com/file/d/1IBv7B7mN2p9wROBcbIXjdXhjHg4az3t2/view",
   "faq": [
     {
       "q": "What is copy trading?",
@@ -30,3 +32,4 @@
     }
   ]
 }
+
