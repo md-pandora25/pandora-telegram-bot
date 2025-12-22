@@ -55,8 +55,8 @@ def back_to_menu_kb() -> InlineKeyboardMarkup:
 
 def join_steps_kb() -> InlineKeyboardMarkup:
     keyboard = [
-        [InlineKeyboardButton("✅ Step One – Register and Trade", callback_data="join:step1")],
-        [InlineKeyboardButton("🤝 Step Two – Become an Affiliate", callback_data="join:step2")],
+        [InlineKeyboardButton("🤝 Step One – Register and Trade", callback_data="join:step1")],
+        [InlineKeyboardButton("🗣 Step Two – Become an Affiliate", callback_data="join:step2")],
         [InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")],
     ]
     return InlineKeyboardMarkup(keyboard)
@@ -347,3 +347,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
