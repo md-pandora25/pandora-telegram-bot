@@ -26,12 +26,12 @@
   "faq": [
     {
       "q": "What is copy trading?",
-      "a": "Copy trading means your account automatically mirrors trades from a strategy provider. You stay in control of your account settings and risk limits.",
+      "a": "Copy trading means your account automatically mirrors trades from a strategy provider. You stay in control of your account settings and risk limits."
     },
     {
       "q": "What is an amplified or instant funded account?",
-      "a": "An amplified (instant funded) account is where your deposited value is multiplied for trading purposes, while risk controls still apply.",
-     },
+      "a": "An amplified (instant funded) account is where your deposited value is multiplied for trading purposes, while risk controls still apply."
+    },
     {
       "q": "Where do I see updates?",
       "a": "For the latest News, Updates, Strategy Performance and other key information please ensure you have subscribed to the official Pandora AI Telegram group.",
@@ -39,7 +39,3 @@
     }
   ]
 }
-
-
-
-
