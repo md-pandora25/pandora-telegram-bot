@@ -34,13 +34,15 @@ def load_content() -> Dict[str, Any]:
 
 def build_main_menu() -> InlineKeyboardMarkup:
     keyboard = [
-        [InlineKeyboardButton("📌 FAQ", callback_data="menu:faq")],
         [InlineKeyboardButton("🎥 Presentations", callback_data="menu:presentations")],
-        [InlineKeyboardButton("📄 Documents", callback_data="menu:documents")],
         [InlineKeyboardButton("🤝 How to Join", callback_data="menu:join")],
+        [InlineKeyboardButton("🏢 Corporate Info", callback_data="menu:corporate")],
+        [InlineKeyboardButton("📌 FAQ", callback_data="menu:faq")],
         [InlineKeyboardButton("🧑‍💻 Support", callback_data="menu:support")],
+        [InlineKeyboardButton("⚠️ Disclaimer", callback_data="menu:disclaimer")],
     ]
     return InlineKeyboardMarkup(keyboard)
+
 
 def back_to_menu_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")]])
@@ -106,15 +108,15 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await query.edit_message_text(text, reply_markup=links_list_kb(items, back_target="home"))
         return
 
-    if action == "documents":
-        items = content.get("documents", [])
-        text = "📄 Documents"
-        if not items:
-            text += "\n\nNo document links added yet."
-            await query.edit_message_text(text, reply_markup=back_to_menu_kb())
-            return
-        await query.edit_message_text(text, reply_markup=links_list_kb(items, back_target="home"))
+    if action == "corporate":
+    items = content.get("documents", [])
+    text = "🏢 Corporate Info"
+    if not items:
+        text += "\n\nNo corporate info links added yet."
+        await query.edit_message_text(text, reply_markup=back_to_menu_kb())
         return
+    await query.edit_message_text(text, reply_markup=links_list_kb(items, back_target="home"))
+    return
 
     if action == "join":
         join_text = content.get("join_text", "🤝 How to Join\n\nAdd your join steps here.")
@@ -125,6 +127,24 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         support_text = content.get("support_text", "🧑‍💻 Support\n\nAdd support instructions here.")
         await query.edit_message_text(support_text, reply_markup=back_to_menu_kb())
         return
+
+    if action == "disclaimer":
+    disclaimer_image_url = (content.get("disclaimer_image_url") or "").strip()
+    disclaimer_text = content.get("disclaimer_text", "⚠️ Disclaimer\n\n(Disclaimer text not set.)")
+
+    # If an image URL is provided, send it as a photo; otherwise show text.
+    if disclaimer_image_url:
+        await query.edit_message_text("⚠️ Disclaimer", reply_markup=back_to_menu_kb())
+        await context.bot.send_photo(
+            chat_id=query.message.chat_id,
+            photo=disclaimer_image_url,
+            caption=disclaimer_text[:1024]  # Telegram caption limit safety
+        )
+        return
+
+    await query.edit_message_text(disclaimer_text, reply_markup=back_to_menu_kb())
+    return
+
 
     await query.edit_message_text("Unknown option.", reply_markup=build_main_menu())
 
@@ -230,3 +250,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
