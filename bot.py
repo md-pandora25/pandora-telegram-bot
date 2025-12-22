@@ -99,11 +99,14 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     action = query.data.split(":", 1)[1]
 
     if action == "home":
-        await query.edit_message_text(
-            content.get("welcome_message", "Choose an option:"),
-            reply_markup=build_main_menu(),
-        )
-        return
+    # Photo messages can't be edited into a text menu reliably.
+    # So we send a fresh menu message instead.
+    await context.bot.send_message(
+        chat_id=query.message.chat.id,
+        text=content.get("welcome_message", "Choose an option:"),
+        reply_markup=build_main_menu(),
+    )
+    return
 
     if action == "faq":
         faq_items = content.get("faq", [])
@@ -272,3 +275,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
