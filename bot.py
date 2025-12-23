@@ -34,8 +34,6 @@ def load_content() -> Dict[str, Any]:
 # Keyboards / Menus
 # -----------------------------
 def build_main_menu() -> InlineKeyboardMarkup:
-    # Requested order:
-    # Presentations, How To Join, Corporate Info, FAQ, Support, Disclaimer
     keyboard = [
         [InlineKeyboardButton("🎥 Presentations", callback_data="menu:presentations")],
         [InlineKeyboardButton("🤝 How to Join", callback_data="menu:join")],
@@ -62,16 +60,6 @@ def join_steps_kb() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(keyboard)
 
 
-def faq_list_kb(faq_items: List[Dict[str, str]]) -> InlineKeyboardMarkup:
-    keyboard = []
-    for i, item in enumerate(faq_items):
-        keyboard.append(
-            [InlineKeyboardButton(item.get("q", f"FAQ {i+1}"), callback_data=f"faq:{i}")]
-        )
-    keyboard.append([InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")])
-    return InlineKeyboardMarkup(keyboard)
-
-
 def links_list_kb(items: List[Dict[str, str]], back_target: str) -> InlineKeyboardMarkup:
     keyboard = []
     for item in items:
@@ -83,6 +71,50 @@ def links_list_kb(items: List[Dict[str, str]], back_target: str) -> InlineKeyboa
     keyboard.append([InlineKeyboardButton("⬅️ Back", callback_data=f"menu:{back_target}")])
     keyboard.append([InlineKeyboardButton("🏠 Home", callback_data="menu:home")])
     return InlineKeyboardMarkup(keyboard)
+
+
+# -----------------------------
+# FAQ (Topic-based)
+# -----------------------------
+def faq_topics_kb(faq_topics: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+    keyboard = []
+    for topic in faq_topics:
+        tid = (topic.get("id") or "").strip()
+        title = (topic.get("title") or "FAQ Topic").strip()
+        if tid:
+            keyboard.append([InlineKeyboardButton(f"📂 {title}", callback_data=f"faq_topic:{tid}")])
+
+    keyboard.append([InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")])
+    return InlineKeyboardMarkup(keyboard)
+
+
+def faq_questions_kb(topic_id: str, questions: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
+    keyboard = []
+    for i, item in enumerate(questions):
+        q_text = item.get("q", f"Question {i+1}")
+        keyboard.append([InlineKeyboardButton(q_text, callback_data=f"faq_q:{topic_id}:{i}")])
+
+    # Requested buttons:
+    keyboard.append([InlineKeyboardButton("⬅️ Back to topics", callback_data="faq_back_topics")])
+    keyboard.append([InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")])
+    return InlineKeyboardMarkup(keyboard)
+
+
+def faq_answer_kb(topic_id: str) -> InlineKeyboardMarkup:
+    # Requested buttons:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("⬅️ Back to questions", callback_data=f"faq_back_topic:{topic_id}")],
+        [InlineKeyboardButton("⬅️ Back to topics", callback_data="faq_back_topics")],
+        [InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")],
+    ])
+
+
+def flatten_faq_topics(faq_topics: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    flat: List[Dict[str, Any]] = []
+    for t in faq_topics:
+        for q in t.get("questions", []):
+            flat.append(q)
+    return flat
 
 
 # -----------------------------
@@ -162,7 +194,6 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     if action == "corporate":
-        # Uses the existing "documents" list in content.json, displayed as Corporate Info
         items = content.get("documents", [])
         text = "🏢 Corporate Info"
         if not items:
@@ -173,11 +204,11 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     if action == "faq":
-        faq_items = content.get("faq", [])
-        if not faq_items:
-            await safe_show_menu_message(query, context, "No FAQs configured yet.", back_to_menu_kb())
+        faq_topics = content.get("faq_topics", [])
+        if not faq_topics:
+            await safe_show_menu_message(query, context, "No FAQ topics configured yet.", back_to_menu_kb())
             return
-        await safe_show_menu_message(query, context, "Select a question:", faq_list_kb(faq_items))
+        await safe_show_menu_message(query, context, "📌 FAQ Topics\n\nChoose a topic:", faq_topics_kb(faq_topics))
         return
 
     if action == "support":
@@ -186,7 +217,6 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     if action == "disclaimer":
-        # Sends photo + caption (caption comes from disclaimer_text)
         disclaimer_image_url = (content.get("disclaimer_image_url") or "").strip()
         disclaimer_caption = (content.get("disclaimer_text") or "").strip()
         chat_id = query.message.chat.id
@@ -248,24 +278,101 @@ async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await query.answer()
 
     content = load_content()
-    faq_items = content.get("faq", [])
+    faq_topics = content.get("faq_topics", [])
+    data = query.data
 
-    try:
-        idx = int(query.data.split(":", 1)[1])
-        item = faq_items[idx]
-    except Exception:
-        await safe_show_menu_message(query, context, "Couldn’t find that FAQ item.", back_to_menu_kb())
+    # Back to topics
+    if data == "faq_back_topics":
+        if not faq_topics:
+            await safe_show_menu_message(query, context, "No FAQ topics configured yet.", back_to_menu_kb())
+            return
+        await safe_show_menu_message(query, context, "📌 FAQ Topics\n\nChoose a topic:", faq_topics_kb(faq_topics))
         return
 
-    q = item.get("q", "Question")
-    a = item.get("a", "Answer")
-    extra = (item.get("link", "") or "").strip()
+    # Back to questions for a topic
+    if data.startswith("faq_back_topic:"):
+        topic_id = data.split(":", 1)[1]
+        topic = next((t for t in faq_topics if t.get("id") == topic_id), None)
+        if not topic:
+            await safe_show_menu_message(query, context, "Topic not found.", back_to_menu_kb())
+            return
 
-    text = f"{q}\n\n{a}"
-    if extra:
-        text += f"\n\nMore info: {extra}"
+        questions = topic.get("questions", [])
+        await safe_show_menu_message(
+            query,
+            context,
+            f"📂 {topic.get('title', 'FAQ')}\n\nSelect a question:",
+            faq_questions_kb(topic_id, questions),
+        )
+        return
 
-    await safe_show_menu_message(query, context, text, back_to_menu_kb())
+    # Topic selected
+    if data.startswith("faq_topic:"):
+        topic_id = data.split(":", 1)[1]
+        topic = next((t for t in faq_topics if t.get("id") == topic_id), None)
+        if not topic:
+            await safe_show_menu_message(query, context, "Topic not found.", back_to_menu_kb())
+            return
+
+        questions = topic.get("questions", [])
+        if not questions:
+            await safe_show_menu_message(
+                query,
+                context,
+                f"📂 {topic.get('title', 'FAQ')}\n\nNo questions in this topic yet.",
+                InlineKeyboardMarkup([
+                    [InlineKeyboardButton("⬅️ Back to topics", callback_data="faq_back_topics")],
+                    [InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")]
+                ])
+            )
+            return
+
+        await safe_show_menu_message(
+            query,
+            context,
+            f"📂 {topic.get('title', 'FAQ')}\n\nSelect a question:",
+            faq_questions_kb(topic_id, questions),
+        )
+        return
+
+    # Question selected
+    if data.startswith("faq_q:"):
+        # format: faq_q:<topic_id>:<index>
+        parts = data.split(":")
+        if len(parts) != 3:
+            await safe_show_menu_message(query, context, "Invalid FAQ selection.", back_to_menu_kb())
+            return
+
+        topic_id = parts[1]
+        try:
+            q_idx = int(parts[2])
+        except ValueError:
+            await safe_show_menu_message(query, context, "Invalid FAQ selection.", back_to_menu_kb())
+            return
+
+        topic = next((t for t in faq_topics if t.get("id") == topic_id), None)
+        if not topic:
+            await safe_show_menu_message(query, context, "Topic not found.", back_to_menu_kb())
+            return
+
+        questions = topic.get("questions", [])
+        if q_idx < 0 or q_idx >= len(questions):
+            await safe_show_menu_message(query, context, "Question not found.", back_to_menu_kb())
+            return
+
+        item = questions[q_idx]
+        q = item.get("q", "Question")
+        a = item.get("a", "Answer")
+        extra = (item.get("link", "") or "").strip()
+
+        text = f"{q}\n\n{a}"
+        if extra:
+            text += f"\n\nMore info: {extra}"
+
+        await safe_show_menu_message(query, context, text, faq_answer_kb(topic_id))
+        return
+
+    await safe_show_menu_message(query, context, "Unknown FAQ action.", back_to_menu_kb())
 
 
 # -----------------------------
@@ -275,7 +382,7 @@ def normalize(text: str) -> str:
     return " ".join(text.lower().strip().split())
 
 
-def best_faq_match(user_text: str, faq_items: List[Dict[str, str]]) -> Tuple[int, float]:
+def best_faq_match(user_text: str, faq_items: List[Dict[str, Any]]) -> Tuple[int, float]:
     user_words = set(normalize(user_text).split())
     best_idx, best_score = -1, 0.0
     for i, item in enumerate(faq_items):
@@ -291,7 +398,7 @@ def best_faq_match(user_text: str, faq_items: List[Dict[str, str]]) -> Tuple[int
 
 async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     content = load_content()
-    faq_items = content.get("faq", [])
+    faq_items = flatten_faq_topics(content.get("faq_topics", []))
     msg = update.message.text.strip()
 
     if not faq_items:
@@ -337,7 +444,7 @@ def main() -> None:
 
     app.add_handler(CallbackQueryHandler(on_menu_click, pattern=r"^menu:"))
     app.add_handler(CallbackQueryHandler(on_join_click, pattern=r"^join:"))
-    app.add_handler(CallbackQueryHandler(on_faq_click, pattern=r"^faq:"))
+    app.add_handler(CallbackQueryHandler(on_faq_click, pattern=r"^(faq_topic:|faq_q:|faq_back_)"))
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text_message))
 
@@ -347,4 +454,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
