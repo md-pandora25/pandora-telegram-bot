@@ -38,94 +38,24 @@
         },
         {
           "q": "Can I lose money with copy trading?",
-          "a": "Yes. All trading involves risk. Copy trading reduces the need for decision-making, but it does not remove market risk. This is why risk controls and drawdown limits are important."
+          "a": "Yes. All trading involves risk. Copy trading reduces the need for decision-making, but it does not remove market risk."
         },
         {
-          "q": "What markets are typically traded?",
-          "a": "Within Pandora AI, strategies focus on liquid markets such as Forex and Gold, which are widely traded and commonly used in automated systems."
+          "q": "How are lot fees calculated?",
+          "a": "Lot fees aren’t a single fee — they’re the sum of spread, commission, and swap, scaled by lot size. Within the Pandora AI project, these lot fees are distributed between the broker and the IB (Affiliate) structure in accordance with the reward plan. If you have not yet seen these details, please view the presentations below.",
+          "button_text": "🎥 Open Presentations",
+          "button_action": "menu:presentations"
         },
         {
-          "q": "What is drawdown and why does it matter?",
-          "a": "Drawdown refers to how much an account can decline from its highest value. Pandora AI strategies are designed with a predefined maximum drawdown of 10% to help manage downside risk."
+          "q": "How are Performance fees calculated with regards to High Water Mark?",
+          "a": "A high watermark (HWM) performance fee ensures performance fees are only charged on new profits, not on the recovery of previous losses. If an account experiences a drawdown, it must exceed its previous highest balance before any further performance fees are applied.",
+          "button_text": "🎥 Open Presentations",
+          "button_action": "menu:presentations"
         },
         {
-          "q": "What is an amplified or instant funded account?",
-          "a": "An amplified (instant funded) account multiplies your trading exposure relative to your deposit. For example, a 10x amplified account increases trading capital while risk limits remain clearly defined."
+          "q": "How do you explain exactly what 10% draw down means?",
+          "a": "A 10% drawdown is the difference between your account’s highest balance and its current balance, expressed as a percentage. In trading, this means the account has declined by 10% from its previous peak."
         },
         {
-          "q": "Can I stop copy trading at any time?",
-          "a": "Yes. You can pause or disconnect from a strategy whenever you choose, subject to broker platform rules."
-        }
-      ]
-    },
-
-    {
-      "id": "broker_safety",
-      "title": "The Broker & Safety",
-      "questions": [
-        {
-          "q": "What broker does Pandora AI use for its CopyTrading Strategies?",
-          "a": "Pandora AI has partnered with Axis Capital Group for broker services and copy trading infrastructure.\n\nFor detailed broker documentation and corporate information, please head to Corporate Info, linked below for your convenience.",
-          "button_text": "🏢 Open Corporate Info",
-          "button_action": "menu:corporate"
-        },
-        {
-          "q": "Why does using a regulated broker matter?",
-          "a": "A regulated broker like Axis Capital Group operates under financial oversight, must meet compliance standards, and follows rules around client fund handling, reporting, and transparency."
-        },
-        {
-          "q": "Do I send money to Pandora AI?",
-          "a": "No. Funds are held in your own broker account. Pandora provides strategies and community access—it does not custody client funds."
-        },
-        {
-          "q": "Can Pandora AI access my money?",
-          "a": "No. Pandora strategies can trade on your account only via permissioned systems. Withdrawals always remain under your control."
-        }
-      ]
-    },
-
-    {
-      "id": "networking_community",
-      "title": "Network & Community",
-      "questions": [
-        {
-          "q": "Is Pandora AI an affiliate program?",
-          "a": "Pandora AI has a structured referral and commission system within Axis Capital Group’s Sub-IB environment."
-        },
-        {
-          "q": "Do I need to recruit people to earn?",
-          "a": "No. Many members participate purely as copy traders. Networking is optional."
-        },
-        {
-          "q": "How are commissions generated?",
-          "a": "Commissions may be generated from performance fees, lot-based fees, and direct revenue commissions.",
-          "link": "https://www.youtube.com/watch?v=ugryotNp__4&t=13s"
-        },
-        {
-          "q": "Where do I see updates?",
-          "a": "For the latest news, updates, and strategy performance, please join the official Pandora AI Telegram group.",
-          "link": "https://t.me/Pandora_AI_info"
-        }
-      ]
-    },
-
-    {
-      "id": "mindset_expectations",
-      "title": "Mindset and Expectations",
-      "questions": [
-        {
-          "q": "Is copy trading passive income?",
-          "a": "It can be semi-passive, but not set-and-forget. You should monitor performance and understand risk."
-        },
-        {
-          "q": "Are profits guaranteed?",
-          "a": "No. There are no guaranteed returns."
-        },
-        {
-          "q": "Who is this suitable for?",
-          "a": "Pandora AI suits those seeking structured exposure to trading within a regulated broker environment."
-        }
-      ]
-    }
-  ]
-}
+          "q": "Can I top up my account even if there are current live trades?",
+          "a": "YES. You can top up your trading account at any time. All you need is the account number you wish to top up and the amount you want to deposit. You can then complete the process using the link below.",
