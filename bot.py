@@ -84,9 +84,7 @@ def faq_topics_kb(faq_topics: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
         if tid:
             keyboard.append([InlineKeyboardButton(f"📂 {title}", callback_data=f"faq_topic:{tid}")])
 
-    # ✅ FAQ Search button requested
     keyboard.append([InlineKeyboardButton("🔎 FAQ Search", callback_data="faq_search:start")])
-
     keyboard.append([InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")])
     return InlineKeyboardMarkup(keyboard)
 
@@ -108,6 +106,26 @@ def faq_answer_kb(topic_id: str) -> InlineKeyboardMarkup:
         [InlineKeyboardButton("⬅️ Back to topics", callback_data="faq_back_topics")],
         [InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")],
     ])
+
+
+def faq_answer_kb_with_jump(topic_id: str, item: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """
+    Default FAQ answer buttons + optional internal jump button if configured on the FAQ item:
+      - item["button_text"]
+      - item["button_action"] (e.g. menu:corporate, menu:presentations, join:step1)
+    """
+    rows = [
+        [InlineKeyboardButton("⬅️ Back to questions", callback_data=f"faq_back_topic:{topic_id}")],
+        [InlineKeyboardButton("⬅️ Back to topics", callback_data="faq_back_topics")],
+    ]
+
+    button_text = (item.get("button_text") or "").strip()
+    button_action = (item.get("button_action") or "").strip()
+    if button_text and button_action:
+        rows.append([InlineKeyboardButton(button_text, callback_data=button_action)])
+
+    rows.append([InlineKeyboardButton("⬅️ Back to menu", callback_data="menu:home")])
+    return InlineKeyboardMarkup(rows)
 
 
 def faq_search_result_kb() -> InlineKeyboardMarkup:
@@ -152,7 +170,6 @@ async def safe_show_menu_message(
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     content = load_content()
     welcome = content.get("welcome_message", "Welcome! Choose an option below.")
-    # Reset any per-user modes
     context.user_data["faq_search_mode"] = False
     await update.message.reply_text(welcome, reply_markup=build_main_menu())
 
@@ -398,7 +415,8 @@ async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if extra:
             text += f"\n\nMore info: {extra}"
 
-        await safe_show_menu_message(query, context, text, faq_answer_kb(topic_id))
+        # ✅ This enables internal jump buttons from FAQ answers
+        await safe_show_menu_message(query, context, text, faq_answer_kb_with_jump(topic_id, item))
         return
 
     await safe_show_menu_message(query, context, "Unknown FAQ action.", back_to_menu_kb())
@@ -440,7 +458,6 @@ async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     # If the user pressed "FAQ Search", the next message should be treated as search
     if context.user_data.get("faq_search_mode") is True:
         idx, score = best_faq_match(msg, faq_items)
-
         context.user_data["faq_search_mode"] = False  # one-shot search
 
         if idx == -1 or score < 0.25:
