@@ -121,6 +121,7 @@ def faq_answer_kb_with_jump(topic_id: str, item: Dict[str, Any]) -> InlineKeyboa
 
     button_text = (item.get("button_text") or "").strip()
     button_action = (item.get("button_action") or "").strip()
+
     if button_text and button_action:
         rows.append([InlineKeyboardButton(button_text, callback_data=button_action)])
 
@@ -415,7 +416,6 @@ async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if extra:
             text += f"\n\nMore info: {extra}"
 
-        # ✅ This enables internal jump buttons from FAQ answers
         await safe_show_menu_message(query, context, text, faq_answer_kb_with_jump(topic_id, item))
         return
 
