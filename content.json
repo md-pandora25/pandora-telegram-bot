@@ -1,156 +1,359 @@
 {
-  "welcome_message": "Welcome to the Pandora AI community Bot 😊. Please select from the below menu so I can do my best to assist you",
-  "presentations": [
-    { "title": "Pandora Intro Video", "url": "https://www.youtube.com/watch?v=ugryotNp__4&t=11s" },
-    { "title": "Pandora Intro PDF", "url": "https://drive.google.com/file/d/1cKGj5VPMz2nmj9EWdhI0rZQguuMjVPTI/view" }
-  ],
-  "documents": [
-    { "title": "Axis Group Overview (PDF)", "url": "https://drive.google.com/file/d/1dB_HRnPgCKV3fCevbMNgeSPrcVl9KFTX/view" },
-    { "title": "Axis Capital Platform (PDF)", "url": "https://drive.google.com/file/d/1ULpSi5B-spW4RXOJVsBvSrTlZuJMU_IF/view" },
-    { "title": "Axis Capital Broker A vs B (PDF)", "url": "https://drive.google.com/file/d/16vssIYt3zI5KKPk9fvfYIwAr5XsfsI-5/view" },
-    { "title": "Axis Summary (DOC)", "url": "https://drive.google.com/file/d/1OazgRdYMp4kc03vrpyVf8fDYS8e2Cmau/view" }
-  ],
-  "join_step1_text": "🤝 Step One – Register and Trade\n\n1) Grab your referral link\n2) Register and purchase your account\n3) Connect your account to a strategy\n4) Start enjoying profits! 💰💰\n\n🔗 Follow the setup steps in this document\nhttps://drive.google.com/file/d/1d3hpel1Oho62JOAbmm0MXgrXhq7JeHvq/view",
-  "join_step2_text": "🗣 Step Two – Become an Affiliate\n\nYOU MUST HAVE COMPLETED 🤝 STEP ONE ON THE MENU FIRST!!\n\n1) Get your sponsors Affiliate link\n2) Complete the application process\n3) Receive your approval within 24 hours\n\n🔗 Follow the application steps in this guide\nhttps://drive.google.com/file/d/1lhdNSD0FFwrNtgzwUb5_liQrW8E--WaN/view",
-  "support_text": "🧑‍💻 Support\n\nIf you need help, please contact your referrer initially. If you have registered or are an affiliate and you have an issue or query with your Axis Brokerage account feel free to use the dedicated support bot. 🤖 \nthis dedicated bot was provide by the broker for the sole use of the Pandora AI community. It is manned by support staff dedicated to help our community members, The bot is not manned 24 hours a day at this stage, so please be patient.\n\n🤖https://t.me/Axisvip_bot",
-  "disclaimer_text": "⚠️ DISCLAIMER \n\n Please ensure you read the attached disclaimer! \nThis bot or platform does not provide financial advice, but is a tool to help provide or guide you to the support you require.\n\n 📚Always do your own research!!📚",
-  "disclaimer_image_url": "https://drive.google.com/uc?export=download&id=1IBv7B7mN2p9wROBcbIXjdXhjHg4az3t2",
-  "faq_topics": [
-    {
-      "id": "copytrading",
-      "title": "CopyTrading",
-      "questions": [
+  "default_lang": "en",
+  "languages": {
+    "en": {
+      "language_label": "English",
+      "ui": {
+        "menu_presentations": "🎥 Presentations",
+        "menu_join": "🤝 How to Join",
+        "menu_corporate": "🏢 Corporate Info",
+        "menu_faq": "📌 FAQ",
+        "menu_support": "🧑‍💻 Support",
+        "menu_disclaimer": "⚠️ Disclaimer",
+        "menu_language": "🌍 Language",
+
+        "back_to_menu": "⬅️ Back to menu",
+        "back": "⬅️ Back",
+        "home": "🏠 Home",
+
+        "language_title": "🌍 Language\n\nChoose your language:",
+
+        "presentations_title": "🎥 Presentations",
+        "corporate_title": "🏢 Corporate Info",
+        "join_title": "🤝 How to Join\n\nChoose an option:",
+        "faq_topics_title": "📌 FAQ Topics\n\nChoose a topic:",
+
+        "faq_search_btn": "🔎 FAQ Search",
+        "faq_search_prompt": "🔎 FAQ Search\n\nType a keyword or question (example: drawdown, broker, affiliate).",
+        "search_result": "Search result",
+        "more_info": "More info:",
+        "select_question": "Select a question:",
+        "no_questions": "No questions in this topic yet.",
+
+        "join_step1_btn": "🤝 Step One – Register and Trade",
+        "join_step2_btn": "🗣 Step Two – Become an Affiliate",
+
+        "help_text": "Use /start to open the menu.\nYou can also type a question and I’ll try to match it to an FAQ.\nTip: Open FAQ → FAQ Search to search by keyword.",
+
+        "no_links": "No links added yet.",
+        "no_faq": "No FAQ topics configured yet.",
+        "topic_not_found": "Topic not found.",
+        "question_not_found": "Question not found.",
+        "invalid_selection": "Invalid selection.",
+        "unknown_option": "Unknown option.",
+        "disclaimer_missing": "Disclaimer image is not configured yet. Please contact support.",
+        "search_no_match": "🔎 I didn’t find a close match.\n\nTry a different keyword, or browse the FAQ Topics.",
+        "typed_no_match": "I didn’t find a close match. Try the FAQ menu, or rephrase your question.\n\nTip: Open FAQ → FAQ Search to search by keyword.\n\nType /start to open the menu."
+      },
+
+      "welcome_message": "Welcome to the Pandora AI community Bot 😊. Please select from the below menu so I can do my best to assist you",
+
+      "presentations": [
+        { "title": "Pandora Intro Video", "url": "https://www.youtube.com/watch?v=ugryotNp__4&t=11s" },
+        { "title": "Pandora Intro PDF", "url": "https://drive.google.com/file/d/1cKGj5VPMz2nmj9EWdhI0rZQguuMjVPTI/view" }
+      ],
+
+      "documents": [
+        { "title": "Axis Group Overview (PDF)", "url": "https://drive.google.com/file/d/1dB_HRnPgCKV3fCevbMNgeSPrcVl9KFTX/view" },
+        { "title": "Axis Capital Platform (PDF)", "url": "https://drive.google.com/file/d/1ULpSi5B-spW4RXOJVsBvSrTlZuJMU_IF/view" },
+        { "title": "Axis Capital Broker A vs B (PDF)", "url": "https://drive.google.com/file/d/16vssIYt3zI5KKPk9fvfYIwAr5XsfsI-5/view" },
+        { "title": "Axis Summary (DOC)", "url": "https://drive.google.com/file/d/1OazgRdYMp4kc03vrpyVf8fDYS8e2Cmau/view" }
+      ],
+
+      "join_step1_text": "🤝 Step One – Register and Trade\n\n1) Grab your referral link\n2) Register and purchase your account\n3) Connect your account to a strategy\n4) Start enjoying profits! 💰💰\n\n🔗 Follow the setup steps in this document\nhttps://drive.google.com/file/d/1d3hpel1Oho62JOAbmm0MXgrXhq7JeHvq/view",
+
+      "join_step2_text": "🗣 Step Two – Become an Affiliate\n\nYOU MUST HAVE COMPLETED 🤝 STEP ONE ON THE MENU FIRST!!\n\n1) Get your sponsors Affiliate link\n2) Complete the application process\n3) Receive your approval within 24 hours\n\n🔗 Follow the application steps in this guide\nhttps://drive.google.com/file/d/1lhdNSD0FFwrNtgzwUb5_liQrW8E--WaN/view",
+
+      "support_text": "🧑‍💻 Support\n\nIf you need help, please contact your referrer initially. If you have registered or are an affiliate and you have an issue or query with your Axis Brokerage account feel free to use the dedicated support bot. 🤖 \nthis dedicated bot was provide by the broker for the sole use of the Pandora AI community. It is manned by support staff dedicated to help our community members, The bot is not manned 24 hours a day at this stage, so please be patient.\n\n🤖https://t.me/Axisvip_bot",
+
+      "disclaimer_text": "⚠️ DISCLAIMER \n\n Please ensure you read the attached disclaimer! \nThis bot or platform does not provide financial advice, but is a tool to help provide or guide you to the support you require.\n\n 📚Always do your own research!!📚",
+
+      "disclaimer_image_url": "https://drive.google.com/uc?export=download&id=1IBv7B7mN2p9wROBcbIXjdXhjHg4az3t2",
+
+      "faq_topics": [
         {
-          "q": "What is copy trading?",
-          "a": "Copy trading allows you to automatically replicate the trades of experienced traders or AI strategies in your own account. When the strategy trades, your account mirrors those actions proportionally."
+          "id": "copytrading",
+          "title": "CopyTrading",
+          "questions": [
+            { "q": "What is copy trading?", "a": "Copy trading allows you to automatically replicate the trades of experienced traders or AI strategies in your own account. When the strategy trades, your account mirrors those actions proportionally." },
+            { "q": "Do I need trading experience to copy trade?", "a": "No. Copy trading is designed for beginners. You don’t place trades manually—your role is to choose a strategy, manage risk settings, and monitor performance." },
+            { "q": "Can I lose money with copy trading?", "a": "Yes. All trading involves risk. Copy trading reduces the need for decision-making, but it does not remove market risk. This is why risk controls and drawdown limits are important." },
+            { "q": "What markets are typically traded?", "a": "Within Pandora AI, strategies focus on liquid markets such as Forex and Gold, which are widely traded and commonly used in automated systems." },
+            { "q": "What is drawdown and why does it matter?", "a": "Drawdown refers to how much an account can decline from its highest value. Pandora AI strategies are designed with a predefined maximum drawdown of 10% to help manage downside risk, and all strategies are configured to manage stoploss within these parameters" },
+            { "q": "What is an amplified or instant funded account?", "a": "An amplified (instant funded) account multiplies your trading exposure relative to your deposit. For example, with Pandora AI and Axis a 10x amplified account means your capital is increased tenfold for trading purposes—while risk limits remain clearly defined." },
+            { "q": "Can I stop copy trading at any time?", "a": "Yes. You can pause or disconnect from a strategy whenever you choose, subject to broker platform rules." },
+            {
+              "q": "How are lot fees calculated?",
+              "a": "Lot fees aren’t a single fee — they’re the sum of spread, commission, and swap, scaled by lot size. Within the Pandora AI project these lot fees are distributed between the broker and the IB Structure (Affiliate Network) in accordance to the reward plan. If you have not seen these details please click the link below.",
+              "button_text": "🎥 Open Presentations",
+              "button_action": "menu:presentations"
+            },
+            {
+              "q": "How are Performance fees calculated with regards to High Water Mark?",
+              "a": "A high watermark (HWM) performance fee is a mechanism ensuring performance fees are only charged on new profits, not on recovery of previous losses. It sets the highest previous value (peak) the account has reached; if the value drops, the account must surpass this previous peak before performance fees are charged again.",
+              "button_text": "🎥 Open Presentations",
+              "button_action": "menu:presentations"
+            },
+            { "q": "How do you explain exactly what 10% drawdown means?", "a": "A 10% drawdown is the difference between your account’s highest balance and its current balance, expressed as a percentage. In forex trading, a 10% drawdown means your trading account has lost 10% of its value from a peak." },
+            {
+              "q": "Can I top up my account even if there are current live trades?",
+              "a": "YES, You can top up your trading account at anytime, All you need to know is the account number you wish to topup and how much you wish to deposit. Then simply visit the link below.",
+              "link": "https://axisfunded.com/top-up/pandora"
+            }
+          ]
         },
         {
-          "q": "Do I need trading experience to copy trade?",
-          "a": "No. Copy trading is designed for beginners. You don’t place trades manually—your role is to choose a strategy, manage risk settings, and monitor performance."
+          "id": "broker_safety",
+          "title": "The Broker & Safety",
+          "questions": [
+            {
+              "q": "What broker does Pandora AI use for its CopyTrading Strategies?",
+              "a": "Pandora AI has partnered with Axis Capital group for broker services and copy trading infrastructure.\n\nFor detailed broker documentation and corporate information, please head to Corporate Info, linked below for your convenience",
+              "button_text": "🏢 Open Corporate Info",
+              "button_action": "menu:corporate"
+            },
+            { "q": "Why does using a regulated broker matter?", "a": "A regulated broker like Axis Capital Group operates under financial oversight, must meet compliance standards, and follows rules around client fund handling, reporting, and transparency." },
+            { "q": "Do I send money to Pandora AI?", "a": "No. Funds are held in your own broker account. Pandora provides strategies and community access—it does not custody client funds." },
+            { "q": "Can Pandora AI access my money?", "a": "No. Pandora strategies can trade on your account only via permissioned systems (such as copy trading setups). Withdrawals always remain under your control." }
+          ]
         },
         {
-          "q": "Can I lose money with copy trading?",
-          "a": "Yes. All trading involves risk. Copy trading reduces the need for decision-making, but it does not remove market risk. This is why risk controls and drawdown limits are important."
+          "id": "networking_community",
+          "title": "Network & Community",
+          "questions": [
+            { "q": "Is Pandora AI an affiliate program?", "a": "Pandora AI has a structured referral and commission system, withing Axis Capital Groups, Sub IB environment. (IB = Introducing Broker, often compared to an affiliate in other industries)" },
+            { "q": "Do I need to recruit people to earn?", "a": "No. Many members participate purely as copy traders. Networking is optional and suited to those who enjoy community building and education." },
+            { "q": "How are commissions generated?", "a": "Commissions withing the Pandora AI project may be generated from:\n- Trading performance fees\n- Lot-based fees\n- Direct Revenue Commission\n\nPlease watch the video in the link below to get a full overview of the project and commissions available", "link": "https://www.youtube.com/watch?v=ugryotNp__4&t=13s" },
+            { "q": "What support is available for beginners?", "a": "Pandora AI emphasizes:\n- Community education\n- Telegram updates\n- Strategy performance transparency\n- Step-by-step onboarding guidance\nThe goal is clarity, not pressure." },
+            { "q": "Where do I see updates?", "a": "For the latest News, Updates, Strategy Performance and other key information please ensure you have subscribed to the official Pandora AI Telegram group.", "link": "https://t.me/Pandora_AI_info" },
+            { "q": "Where can I get information/support on Pandora AI?", "a": "We have a public telegram channel that provides regular strategy performance updates, quarterly performance reviews, educational and motivational content. This channel is open to both existing members and your prospects. It is an anonymous channel and also contains access to a dedicated Broker Support Bot", "link": "https://t.me/Pandora_AI_info" },
+            {
+              "q": "What’s the minimum amount of capital that I need to join Pandora AI?",
+              "a": "The minimum trading product you can purchase for Pandora AI is $300 USD, most commonly deposited using crypto, but other deposit methods are available. If you have not yet seen the presentation for Pandora AI, please hit the button to Presentations below",
+              "button_text": "🎥 Open Presentations",
+              "button_action": "menu:presentations"
+            }
+          ]
         },
         {
-          "q": "What markets are typically traded?",
-          "a": "Within Pandora AI, strategies focus on liquid markets such as Forex and Gold, which are widely traded and commonly used in automated systems."
-        },
-        {
-          "q": "What is drawdown and why does it matter?",
-          "a": "Drawdown refers to how much an account can decline from its highest value. Pandora AI strategies are designed with a predefined maximum drawdown of 10% to help manage downside risk, and all strategies are configured to manage stoploss within these parameters"
-        },
-        {
-          "q": "What is an amplified or instant funded account?",
-          "a": "An amplified (instant funded) account multiplies your trading exposure relative to your deposit. For example, with Pandora AI and Axis a 10x amplified account means your capital is increased tenfold for trading purposes—while risk limits remain clearly defined."
-        },
-        {
-          "q": "Can I stop copy trading at any time?",
-          "a": "Yes. You can pause or disconnect from a strategy whenever you choose, subject to broker platform rules."
-        },
-        {
-          "q": "How are lot fees calculated?",
-          "a": "Lot fees aren’t a single fee — they’re the sum of spread, commission, and swap, scaled by lot size. Within the Pandora AI project these lot fees are distributed between the broker and the IB Structure (Affiliate Network) in accordance to the reward plan. If you have not seen these details please click the link below.",
-          "button_text": "🎥 Open Presentations",
-          "button_action": "menu:presentations"
-        },
-        {
-          "q": "How are Performance fees calculated with regards to High Water Mark?",
-          "a": "A high watermark (HWM) performance fee is a mechanism ensuring performance fees are only charged on new profits, not on recovery of previous losses. It sets the highest previous value (peak) the account has reached; if the value drops, the account must surpass this previous peak before performance fees are charged again.",
-          "button_text": "🎥 Open Presentations",
-          "button_action": "menu:presentations"
-        },
-        {
-          "q": "How do you explain exactly what 10% draw down means?",
-          "a": "A 10% drawdown is the difference between your account’s highest balance and its current balance, expressed as a percentage. In forex trading, a 10% drawdown means your trading account has lost 10% of its value from a peak."
-        },
-        {
-          "q": "Can I top up my account even if there are current live trades?",
-          "a": "YES, You can top up your trading account at anytime, All you need to know is the account number you wish to topup and how much you wish to deposit. Then simply visit the link below.",
-          "link": "https://axisfunded.com/top-up/pandora"
+          "id": "mindset_expectations",
+          "title": "Mindset and Expectations",
+          "questions": [
+            { "q": "Is copy trading passive income?", "a": "It can be semi-passive, but not “set and forget.” You should still monitor performance, understand risk, and stay informed." },
+            { "q": "Are profits guaranteed?", "a": "No. There are no guaranteed returns. Any platform claiming guaranteed profits should be avoided." },
+            { "q": "Who is this suitable for?", "a": "Pandora AI is suited for people who:\n- Want exposure to trading without manual execution\n- Value transparency and structure\n- Prefer regulated broker environments\n- Are interested in long-term participation, not quick wins" }
+          ]
         }
       ]
     },
-    {
-      "id": "broker_safety",
-      "title": "The Broker & Safety",
-      "questions": [
+
+    "de": {
+      "language_label": "Deutsch",
+      "ui": {
+        "menu_presentations": "🎥 Präsentationen",
+        "menu_join": "🤝 So trittst du bei",
+        "menu_corporate": "🏢 Unternehmensinfos",
+        "menu_faq": "📌 FAQ",
+        "menu_support": "🧑‍💻 Support",
+        "menu_disclaimer": "⚠️ Haftungsausschluss",
+        "menu_language": "🌍 Sprache",
+
+        "back_to_menu": "⬅️ Zurück zum Menü",
+        "back": "⬅️ Zurück",
+        "home": "🏠 Start",
+
+        "language_title": "🌍 Sprache\n\nBitte wähle deine Sprache:",
+
+        "presentations_title": "🎥 Präsentationen",
+        "corporate_title": "🏢 Unternehmensinfos",
+        "join_title": "🤝 So trittst du bei\n\nBitte wähle eine Option:",
+        "faq_topics_title": "📌 FAQ-Themen\n\nBitte wähle ein Thema:",
+
+        "faq_search_btn": "🔎 FAQ-Suche",
+        "faq_search_prompt": "🔎 FAQ-Suche\n\nSchreibe ein Stichwort oder eine Frage (z. B.: drawdown, broker, affiliate).",
+        "search_result": "Suchergebnis",
+        "more_info": "Mehr Infos:",
+        "select_question": "Bitte wähle eine Frage:",
+        "no_questions": "In diesem Thema gibt es noch keine Fragen.",
+
+        "join_step1_btn": "🤝 Schritt 1 – Registrieren & traden",
+        "join_step2_btn": "🗣 Schritt 2 – Affiliate werden",
+
+        "help_text": "Nutze /start, um das Menü zu öffnen.\nDu kannst auch eine Frage tippen und ich versuche, sie einem FAQ zuzuordnen.\nTipp: FAQ → FAQ-Suche nutzen, um nach Stichworten zu suchen.",
+
+        "no_links": "Noch keine Links hinzugefügt.",
+        "no_faq": "Noch keine FAQ-Themen konfiguriert.",
+        "topic_not_found": "Thema nicht gefunden.",
+        "question_not_found": "Frage nicht gefunden.",
+        "invalid_selection": "Ungültige Auswahl.",
+        "unknown_option": "Unbekannte Option.",
+        "disclaimer_missing": "Das Haftungsausschluss-Bild ist noch nicht konfiguriert. Bitte kontaktiere den Support.",
+        "search_no_match": "🔎 Ich habe keine passende Antwort gefunden.\n\nVersuche ein anderes Stichwort oder schaue in den FAQ-Themen nach.",
+        "typed_no_match": "Ich habe keine passende Antwort gefunden. Bitte nutze das FAQ-Menü oder formuliere deine Frage anders.\n\nTipp: FAQ → FAQ-Suche.\n\nTippe /start, um das Menü zu öffnen."
+      },
+
+      "welcome_message": "Willkommen beim Pandora AI Community Bot 😊. Bitte wähle unten im Menü eine Option aus, damit ich dir bestmöglich helfen kann.",
+
+      "presentations": [
+        { "title": "Pandora Intro Video (DE)", "url": "https://www.youtube.com/watch?v=DW8pVc-5FiY&t=3s" },
+        { "title": "Pandora Intro PDF (DE)", "url": "https://drive.google.com/file/d/1w1LI1FlLmF3FOHRkMB6cIG_kbMLcLURj/view" }
+      ],
+
+      "documents": [
+        { "title": "Axis Gruppen-Übersicht (PDF) (DE)", "url": "https://drive.google.com/file/d/1tbTtqxswyPdU6sSiYu9T9zJ1JVMbwHa-/view" },
+        { "title": "Axis Capital Plattform (PDF) (DE)", "url": "https://drive.google.com/file/d/1WHuhWxDcTlBIZs_IQCnfVGyKNIM6YQY-/view" },
+        { "title": "Axis Capital Broker A vs B (PDF) (DE)", "url": "https://drive.google.com/file/d/14R08iYd_z1o2gLzNwGxadKkqFMkEhzHP/view" },
+        { "title": "Axis Zusammenfassung (DOC) (DE)", "url": "https://drive.google.com/file/d/1zou2fKZbp0q62ULDp9a8H7hxcor4dJrX/view" }
+      ],
+
+      "join_step1_text": "🤝 Schritt 1 – Registrieren & traden\n\n1) Hole dir deinen Referral-Link\n2) Registriere dich und kaufe dein Konto\n3) Verbinde dein Konto mit einer Strategie\n4) Starte mit dem Copytrading 💰💰\n\n🔗 Folge den Setup-Schritten in diesem Dokument:\nhttps://drive.google.com/file/d/1l1zX3o551Nx0eP2uH4FGSRqBVY7xGNEy/view",
+
+      "join_step2_text": "🗣 Schritt 2 – Affiliate werden\n\nDU MUSST ZUERST 🤝 SCHRITT 1 IM MENÜ ABGESCHLOSSEN HABEN!!\n\n1) Hole dir den Affiliate-Link deines Sponsors\n2) Fülle den Antrag aus\n3) Erhalte deine Freigabe innerhalb von 24 Stunden\n\n🔗 Folge den Schritten in diesem Leitfaden:\nhttps://drive.google.com/file/d/1Ruadyf4mXqJMaVz89968pCkF553u54sc/view",
+
+      "support_text": "🧑‍💻 Support\n\nWenn du Hilfe brauchst, kontaktiere zunächst deinen Referrer. Wenn du registriert bist oder Affiliate bist und ein Problem oder eine Frage zu deinem Axis Brokerage Konto hast, nutze bitte den dedizierten Support-Bot. 🤖\nDieser Bot wurde vom Broker speziell für die Pandora AI Community bereitgestellt. Er wird von Support-Mitarbeitern betreut (nicht 24/7), bitte habe etwas Geduld.\n\n🤖 https://t.me/Axisvip_bot",
+
+      "disclaimer_text": "⚠️ HINWEIS \n\nBitte lies den Haftungsausschluss sorgfältig.\nDieser Bot/diese Plattform stellt keine Finanzberatung dar, sondern dient als Tool zur Information und Orientierung.\n\n📚 Bitte immer selbst recherchieren! 📚",
+
+      "disclaimer_image_url": "https://drive.google.com/uc?export=download&id=1kAhmlQy0bf-Ya99nLMTfF5yI_DmBM-lp",
+
+      "faq_topics": [
         {
-          "q": "What broker does Pandora AI use for its CopyTrading Strategies?",
-          "a": "Pandora AI has partnered with Axis Capital group for broker services and copy trading infrastructure.\n\nFor detailed broker documentation and corporate information, please head to Corporate Info, linked below for your convenience",
-          "button_text": "🏢 Open Corporate Info",
-          "button_action": "menu:corporate"
+          "id": "copytrading",
+          "title": "CopyTrading",
+          "questions": [
+            {
+              "q": "Was ist Copytrading?",
+              "a": "Copytrading ermöglicht es dir, Trades von erfahrenen Tradern oder KI-Strategien automatisch in deinem eigenen Konto zu spiegeln. Wenn die Strategie handelt, wird dies in deinem Konto proportional nachgebildet."
+            },
+            {
+              "q": "Brauche ich Trading-Erfahrung für Copytrading?",
+              "a": "Nein. Copytrading ist auch für Einsteiger geeignet. Du platzierst keine Trades manuell – du wählst eine Strategie, stellst deine Risikoparameter ein und behältst die Performance im Blick."
+            },
+            {
+              "q": "Kann ich beim Copytrading Geld verlieren?",
+              "a": "Ja. Trading beinhaltet immer Risiken. Copytrading reduziert Entscheidungen im Alltag, entfernt aber nicht das Marktrisiko. Deshalb sind Risikokontrollen und Drawdown-Limits wichtig."
+            },
+            {
+              "q": "Welche Märkte werden typischerweise gehandelt?",
+              "a": "Im Pandora AI Projekt fokussieren Strategien auf liquide Märkte wie Forex und Gold, die häufig in automatisierten Systemen genutzt werden."
+            },
+            {
+              "q": "Was ist Drawdown und warum ist das wichtig?",
+              "a": "Drawdown beschreibt, wie stark ein Konto vom bisherigen Höchststand zurückgeht. Pandora AI Strategien sind so konzipiert, dass ein maximaler Drawdown von 10% als Risikogrenze dient."
+            },
+            {
+              "q": "Was ist ein „Amplified“ bzw. „Instant Funded“ Konto?",
+              "a": "Ein Amplified (Instant Funded) Konto erhöht deine Handels-Exposure im Verhältnis zur Einzahlung. Beispiel: Bei 10x Amplified wird das Handelskapital verzehnfacht, während Risikolimits klar definiert bleiben."
+            },
+            {
+              "q": "Kann ich Copytrading jederzeit stoppen?",
+              "a": "Ja. Du kannst eine Strategie jederzeit pausieren oder trennen – abhängig von den Regeln der Broker-Plattform."
+            },
+            {
+              "q": "Wie werden Lot-Gebühren berechnet?",
+              "a": "Lot-Gebühren sind keine einzelne Gebühr – sie setzen sich aus Spread, Kommission und Swap zusammen und werden mit der Lot-Größe skaliert. Im Pandora AI Projekt werden diese Gebühren gemäß Reward-Plan zwischen Broker und IB-Struktur (Affiliate-Netzwerk) verteilt. Sieh dir dazu bitte die Präsentationen an.",
+              "button_text": "🎥 Präsentationen öffnen",
+              "button_action": "menu:presentations"
+            },
+            {
+              "q": "Wie werden Performance Fees mit High Water Mark berechnet?",
+              "a": "Eine High-Water-Mark (HWM) stellt sicher, dass Performance Fees nur auf neue Gewinne erhoben werden – nicht auf das Aufholen vorheriger Verluste. Nach einem Rückgang muss das Konto erst wieder über den vorherigen Höchststand steigen, bevor erneut Performance Fees anfallen.",
+              "button_text": "🎥 Präsentationen öffnen",
+              "button_action": "menu:presentations"
+            },
+            {
+              "q": "Wie erklärt man genau, was 10% Drawdown bedeutet?",
+              "a": "Ein 10% Drawdown ist der Abstand zwischen dem höchsten Kontostand und dem aktuellen Kontostand – als Prozentwert. In Forex bedeutet ein 10% Drawdown, dass das Konto vom bisherigen Hoch um 10% gefallen ist."
+            },
+            {
+              "q": "Kann ich mein Konto aufladen, auch wenn gerade Trades offen sind?",
+              "a": "JA. Du kannst dein Handelskonto jederzeit aufladen. Du brauchst nur die Kontonummer und den Betrag. Nutze dafür den Link unten.",
+              "link": "https://axisfunded.com/top-up/pandora"
+            }
+          ]
         },
         {
-          "q": "Why does using a regulated broker matter?",
-          "a": "A regulated broker like Axis Capital Group operates under financial oversight, must meet compliance standards, and follows rules around client fund handling, reporting, and transparency."
+          "id": "broker_safety",
+          "title": "Broker & Sicherheit",
+          "questions": [
+            {
+              "q": "Welchen Broker nutzt Pandora AI für seine CopyTrading-Strategien?",
+              "a": "Pandora AI arbeitet mit Axis Capital Group für Broker-Services und Copytrading-Infrastruktur zusammen.\n\nFür Dokumente und Unternehmensinformationen nutze bitte „Unternehmensinfos“ unten.",
+              "button_text": "🏢 Unternehmensinfos öffnen",
+              "button_action": "menu:corporate"
+            },
+            {
+              "q": "Warum ist ein regulierter Broker wichtig?",
+              "a": "Ein regulierter Broker arbeitet unter Aufsicht, muss Compliance-Standards erfüllen und Regeln zur Verwahrung von Kundengeldern sowie zur Transparenz einhalten."
+            },
+            {
+              "q": "Sende ich Geld an Pandora AI?",
+              "a": "Nein. Deine Gelder liegen in deinem eigenen Broker-Konto. Pandora stellt Strategien und Community-Zugang bereit, verwahrt aber keine Kundengelder."
+            },
+            {
+              "q": "Kann Pandora AI auf mein Geld zugreifen?",
+              "a": "Nein. Strategien können nur über erlaubte Systeme (z. B. Copytrading-Setup) handeln. Auszahlungen bleiben immer unter deiner Kontrolle."
+            }
+          ]
         },
         {
-          "q": "Do I send money to Pandora AI?",
-          "a": "No. Funds are held in your own broker account. Pandora provides strategies and community access—it does not custody client funds."
+          "id": "networking_community",
+          "title": "Netzwerk & Community",
+          "questions": [
+            {
+              "q": "Ist Pandora AI ein Affiliate-Programm?",
+              "a": "Pandora AI hat ein strukturiertes Referral- und Provisionssystem innerhalb der Sub-IB Umgebung von Axis Capital Group (IB = Introducing Broker)."
+            },
+            {
+              "q": "Muss ich Leute anwerben, um zu verdienen?",
+              "a": "Nein. Viele Mitglieder nutzen Pandora AI ausschließlich als Copytrader. Networking ist optional."
+            },
+            {
+              "q": "Wie entstehen Provisionen?",
+              "a": "Provisionen können z. B. entstehen durch:\n- Performance Fees\n- Lot-basierte Gebühren\n- Direct Revenue Commission\n\nFür Details sieh dir bitte das Video an:",
+              "link": "https://www.youtube.com/watch?v=DW8pVc-5FiY&t=17s"
+            },
+            {
+              "q": "Welche Unterstützung gibt es für Anfänger?",
+              "a": "Pandora AI bietet u. a.:\n- Community Education\n- Telegram Updates\n- Transparenz zur Strategie-Performance\n- Schritt-für-Schritt Onboarding\nZiel ist Klarheit – kein Druck."
+            },
+            {
+              "q": "Wo sehe ich Updates?",
+              "a": "Für News, Updates und Strategie-Performance trete bitte dem offiziellen Pandora AI Telegram Kanal bei:",
+              "link": "https://t.me/Pandora_AI_info"
+            },
+            {
+              "q": "Wo bekomme ich Informationen/Support zu Pandora AI?",
+              "a": "Wir haben einen öffentlichen Telegram-Kanal mit regelmäßigen Strategie-Updates, quartalsweisen Performance-Reviews sowie edukativen und motivierenden Inhalten. Der Kanal ist für bestehende Mitglieder und Interessenten offen, anonym und enthält auch Zugang zum dedizierten Broker Support Bot.",
+              "link": "https://t.me/Axisvip_bot"
+            },
+            {
+              "q": "Was ist das Mindestkapital, um Pandora AI zu starten?",
+              "a": "Das minimale Trading-Produkt für Pandora AI beträgt 300 USD. Meist wird per Krypto eingezahlt, andere Methoden können verfügbar sein. Wenn du die Präsentation noch nicht gesehen hast, nutze bitte den Button unten.",
+              "button_text": "🎥 Präsentationen öffnen",
+              "button_action": "menu:presentations"
+            }
+          ]
         },
         {
-          "q": "Can Pandora AI access my money?",
-          "a": "No. Pandora strategies can trade on your account only via permissioned systems (such as copy trading setups). Withdrawals always remain under your control."
-        }
-      ]
-    },
-    {
-      "id": "networking_community",
-      "title": "Network & Community",
-      "questions": [
-        {
-          "q": "Is Pandora AI an affiliate program?",
-          "a": "Pandora AI has a structured referral and commission system, withing Axis Capital Groups, Sub IB environment. (IB = Introducing Broker, often compared to an affiliate in other industries)"
-        },
-        {
-          "q": "Do I need to recruit people to earn?",
-          "a": "No. Many members participate purely as copy traders. Networking is optional and suited to those who enjoy community building and education."
-        },
-        {
-          "q": "How are commissions generated?",
-          "a": "Commissions withing the Pandora AI project may be generated from:\n- Trading performance fees\n- Lot-based fees\n- Direct Revenue Commission\n\nPlease watch the video in the link below to get a full overview of the project and commissions available",
-          "link": "https://www.youtube.com/watch?v=ugryotNp__4&t=13s"
-        },
-        {
-          "q": "What support is available for beginners?",
-          "a": "Pandora AI emphasizes:\n- Community education\n- Telegram updates\n- Strategy performance transparency\n- Step-by-step onboarding guidance\nThe goal is clarity, not pressure."
-        },
-        {
-          "q": "Where do I see updates?",
-          "a": "For the latest News, Updates, Strategy Performance and other key information please ensure you have subscribed to the official Pandora AI Telegram group.",
-          "link": "https://t.me/Pandora_AI_info"
-        },
-        {
-          "q": "Where can I get information/support on Pandora AI?",
-          "a": "We have a public telegram channel that provides regular strategy performance updates, quarterly performance reviews, educational and motivational content. This channel is open to both existing members and your prospects. It is an anonymous channel and also contains access to a dedicated Broker Support Bot",
-          "link": "https://t.me/Pandora_AI_info"
-        },
-        {
-          "q": "What’s the minimum amount of capital that I need to join Pandora AI?",
-          "a": "The minimum trading product you can purchase for Pandora AI is $300 USD, most commonly deposited using crypto, but other deposit methods are available. If you have not yet seen the presentation for Pandora AI, please hit the button to Presentations below",
-          "button_text": "🎥 Open Presentations",
-          "button_action": "menu:presentations"
-        }
-      ]
-    },
-    {
-      "id": "mindset_expectations",
-      "title": "Mindset and Expectations",
-      "questions": [
-        {
-          "q": "Is copy trading passive income?",
-          "a": "It can be semi-passive, but not “set and forget.” You should still monitor performance, understand risk, and stay informed."
-        },
-        {
-          "q": "Are profits guaranteed?",
-          "a": "No. There are no guaranteed returns. Any platform claiming guaranteed profits should be avoided."
-        },
-        {
-          "q": "Who is this suitable for?",
-          "a": "Pandora AI is suited for people who:\n- Want exposure to trading without manual execution\n- Value transparency and structure\n- Prefer regulated broker environments\n- Are interested in long-term participation, not quick wins"
+          "id": "mindset_expectations",
+          "title": "Mindset & Erwartungen",
+          "questions": [
+            {
+              "q": "Ist Copytrading passives Einkommen?",
+              "a": "Es kann teil-passiv sein, aber nicht „einrichten und vergessen“. Du solltest Performance beobachten, Risiken verstehen und informiert bleiben."
+            },
+            {
+              "q": "Sind Gewinne garantiert?",
+              "a": "Nein. Es gibt keine garantierten Renditen. Plattformen mit Gewinn-Garantien solltest du meiden."
+            },
+            {
+              "q": "Für wen ist das geeignet?",
+              "a": "Pandora AI ist geeignet für Personen, die:\n- Trading-Exposure ohne manuelle Ausführung möchten\n- Transparenz und Struktur schätzen\n- eine regulierte Broker-Umgebung bevorzugen\n- langfristig denken, nicht auf schnelle Gewinne aus sind"
+            }
+          ]
         }
       ]
     }
-  ]
+  }
 }
