@@ -11,6 +11,9 @@
         "menu_support": "🧑‍💻 Support",
         "menu_disclaimer": "⚠️ Disclaimer",
         "menu_language": "🌍 Language",
+        "menu_about": "❓ What is Pandora AI?",
+
+        "about_watch_btn": "🎥 Watch the short presentation",
 
         "back_to_menu": "⬅️ Back to menu",
         "back": "⬅️ Back",
@@ -47,6 +50,9 @@
       },
 
       "welcome_message": "Welcome to the Pandora AI community Bot 😊. Please select from the below menu so I can do my best to assist you",
+
+      "about_text": "❓ What is Pandora AI?\n\nPandora AI has been built as a community-driven project, connecting everyday individuals with a regulated broker, automated trading strategies and passive commission structures without needing experience.\n\nHere’s what makes it accessible:\n- 100% automated copy trading\n- No trading knowledge required\n- You control your own broker account\n- Pandora AI never holds or handles any client funds\n- You can deposit, withdraw profits, or stop anytime\n\nAnd most importantly: Axis offers all Pandora AI members access to 10X instant funded accounts, meaning your deposit becomes a larger trading balance. Still under your full control.\nThis structure is a game-changer for people who want exposure without needing large starting capital.\n\nPandora AI integrates multiple strategy styles, including human and algorithmic trading all curated for low drawdown and high consistency. There are three currently recommended strategies. Dynamics, Samurai and The Secret.\n\nThink of it as trading with more weight, without needing more personal capital.\n\nTo find out more detail watch this short presentation or use the other menu items as you need.",
+      "about_url": "https://www.youtube.com/watch?v=ugryotNp__4&t=17s",
 
       "presentations": [
         { "title": "Pandora Intro Video", "url": "https://www.youtube.com/watch?v=ugryotNp__4&t=11s" },
@@ -157,6 +163,9 @@
         "menu_support": "🧑‍💻 Support",
         "menu_disclaimer": "⚠️ Haftungsausschluss",
         "menu_language": "🌍 Sprache",
+        "menu_about": "❓ Was ist Pandora AI?",
+
+        "about_watch_btn": "🎥 Kurze Präsentation ansehen",
 
         "back_to_menu": "⬅️ Zurück zum Menü",
         "back": "⬅️ Zurück",
@@ -194,6 +203,9 @@
 
       "welcome_message": "Willkommen beim Pandora AI Community Bot 😊. Bitte wähle unten im Menü eine Option aus, damit ich dir bestmöglich helfen kann.",
 
+      "about_text": "❓ Was ist Pandora AI?\n\nPandora AI wurde als Community-getriebenes Projekt aufgebaut und verbindet ganz normale Menschen mit einem regulierten Broker, automatisierten Trading-Strategien und passiven Provisionsstrukturen – ganz ohne Vorerfahrung.\n\nWarum es so zugänglich ist:\n- 100% automatisiertes Copytrading\n- Kein Trading-Wissen erforderlich\n- Du kontrollierst dein eigenes Broker-Konto\n- Pandora AI hält oder verwaltet niemals Kundengelder\n- Du kannst jederzeit einzahlen, Gewinne auszahlen oder stoppen\n\nUnd das Wichtigste: Axis bietet allen Pandora AI Mitgliedern Zugang zu 10X Instant-Funded-Konten – das bedeutet, deine Einzahlung wird zu einem größeren Trading-Balance (weiterhin vollständig unter deiner Kontrolle).\nDiese Struktur ist ein Game-Changer für Menschen, die Exposure möchten, ohne viel Startkapital zu benötigen.\n\nPandora AI integriert mehrere Strategiestile, inklusive menschlichem und algorithmischem Trading – kuratiert für niedrigen Drawdown und hohe Konstanz. Aktuell werden drei Strategien empfohlen: Dynamics, Samurai und The Secret.\n\nStell es dir vor wie Trading mit mehr Gewicht, ohne mehr eigenes Kapital einsetzen zu müssen.\n\nFür mehr Details sieh dir diese kurze Präsentation an oder nutze die anderen Menüpunkte, je nachdem was du brauchst.",
+      "about_url": "https://www.youtube.com/watch?v=DW8pVc-5FiY&t=138s",
+
       "presentations": [
         { "title": "Pandora Intro Video (DE)", "url": "https://www.youtube.com/watch?v=DW8pVc-5FiY&t=3s" },
         { "title": "Pandora Intro PDF (DE)", "url": "https://drive.google.com/file/d/1w1LI1FlLmF3FOHRkMB6cIG_kbMLcLURj/view" }
@@ -221,34 +233,13 @@
           "id": "copytrading",
           "title": "CopyTrading",
           "questions": [
-            {
-              "q": "Was ist Copytrading?",
-              "a": "Copytrading ermöglicht es dir, Trades von erfahrenen Tradern oder KI-Strategien automatisch in deinem eigenen Konto zu spiegeln. Wenn die Strategie handelt, wird dies in deinem Konto proportional nachgebildet."
-            },
-            {
-              "q": "Brauche ich Trading-Erfahrung für Copytrading?",
-              "a": "Nein. Copytrading ist auch für Einsteiger geeignet. Du platzierst keine Trades manuell – du wählst eine Strategie, stellst deine Risikoparameter ein und behältst die Performance im Blick."
-            },
-            {
-              "q": "Kann ich beim Copytrading Geld verlieren?",
-              "a": "Ja. Trading beinhaltet immer Risiken. Copytrading reduziert Entscheidungen im Alltag, entfernt aber nicht das Marktrisiko. Deshalb sind Risikokontrollen und Drawdown-Limits wichtig."
-            },
-            {
-              "q": "Welche Märkte werden typischerweise gehandelt?",
-              "a": "Im Pandora AI Projekt fokussieren Strategien auf liquide Märkte wie Forex und Gold, die häufig in automatisierten Systemen genutzt werden."
-            },
-            {
-              "q": "Was ist Drawdown und warum ist das wichtig?",
-              "a": "Drawdown beschreibt, wie stark ein Konto vom bisherigen Höchststand zurückgeht. Pandora AI Strategien sind so konzipiert, dass ein maximaler Drawdown von 10% als Risikogrenze dient."
-            },
-            {
-              "q": "Was ist ein „Amplified“ bzw. „Instant Funded“ Konto?",
-              "a": "Ein Amplified (Instant Funded) Konto erhöht deine Handels-Exposure im Verhältnis zur Einzahlung. Beispiel: Bei 10x Amplified wird das Handelskapital verzehnfacht, während Risikolimits klar definiert bleiben."
-            },
-            {
-              "q": "Kann ich Copytrading jederzeit stoppen?",
-              "a": "Ja. Du kannst eine Strategie jederzeit pausieren oder trennen – abhängig von den Regeln der Broker-Plattform."
-            },
+            { "q": "Was ist Copytrading?", "a": "Copytrading ermöglicht es dir, Trades von erfahrenen Tradern oder KI-Strategien automatisch in deinem eigenen Konto zu spiegeln. Wenn die Strategie handelt, wird dies in deinem Konto proportional nachgebildet." },
+            { "q": "Brauche ich Trading-Erfahrung für Copytrading?", "a": "Nein. Copytrading ist auch für Einsteiger geeignet. Du platzierst keine Trades manuell – du wählst eine Strategie, stellst deine Risikoparameter ein und behältst die Performance im Blick." },
+            { "q": "Kann ich beim Copytrading Geld verlieren?", "a": "Ja. Trading beinhaltet immer Risiken. Copytrading reduziert Entscheidungen im Alltag, entfernt aber nicht das Marktrisiko. Deshalb sind Risikokontrollen und Drawdown-Limits wichtig." },
+            { "q": "Welche Märkte werden typischerweise gehandelt?", "a": "Im Pandora AI Projekt fokussieren Strategien auf liquide Märkte wie Forex und Gold, die häufig in automatisierten Systemen genutzt werden." },
+            { "q": "Was ist Drawdown und warum ist das wichtig?", "a": "Drawdown beschreibt, wie stark ein Konto vom bisherigen Höchststand zurückgeht. Pandora AI Strategien sind so konzipiert, dass ein maximaler Drawdown von 10% als Risikogrenze dient." },
+            { "q": "Was ist ein „Amplified“ bzw. „Instant Funded“ Konto?", "a": "Ein Amplified (Instant Funded) Konto erhöht deine Handels-Exposure im Verhältnis zur Einzahlung. Beispiel: Bei 10x Amplified wird das Handelskapital verzehnfacht, während Risikolimits klar definiert bleiben." },
+            { "q": "Kann ich Copytrading jederzeit stoppen?", "a": "Ja. Du kannst eine Strategie jederzeit pausieren oder trennen – abhängig von den Regeln der Broker-Plattform." },
             {
               "q": "Wie werden Lot-Gebühren berechnet?",
               "a": "Lot-Gebühren sind keine einzelne Gebühr – sie setzen sich aus Spread, Kommission und Swap zusammen und werden mit der Lot-Größe skaliert. Im Pandora AI Projekt werden diese Gebühren gemäß Reward-Plan zwischen Broker und IB-Struktur (Affiliate-Netzwerk) verteilt. Sieh dir dazu bitte die Präsentationen an.",
@@ -261,95 +252,11 @@
               "button_text": "🎥 Präsentationen öffnen",
               "button_action": "menu:presentations"
             },
-            {
-              "q": "Wie erklärt man genau, was 10% Drawdown bedeutet?",
-              "a": "Ein 10% Drawdown ist der Abstand zwischen dem höchsten Kontostand und dem aktuellen Kontostand – als Prozentwert. In Forex bedeutet ein 10% Drawdown, dass das Konto vom bisherigen Hoch um 10% gefallen ist."
-            },
+            { "q": "Wie erklärt man genau, was 10% Drawdown bedeutet?", "a": "Ein 10% Drawdown ist der Abstand zwischen dem höchsten Kontostand und dem aktuellen Kontostand – als Prozentwert. In Forex bedeutet ein 10% Drawdown, dass das Konto vom bisherigen Hoch um 10% gefallen ist." },
             {
               "q": "Kann ich mein Konto aufladen, auch wenn gerade Trades offen sind?",
               "a": "JA. Du kannst dein Handelskonto jederzeit aufladen. Du brauchst nur die Kontonummer und den Betrag. Nutze dafür den Link unten.",
               "link": "https://axisfunded.com/top-up/pandora"
-            }
-          ]
-        },
-        {
-          "id": "broker_safety",
-          "title": "Broker & Sicherheit",
-          "questions": [
-            {
-              "q": "Welchen Broker nutzt Pandora AI für seine CopyTrading-Strategien?",
-              "a": "Pandora AI arbeitet mit Axis Capital Group für Broker-Services und Copytrading-Infrastruktur zusammen.\n\nFür Dokumente und Unternehmensinformationen nutze bitte „Unternehmensinfos“ unten.",
-              "button_text": "🏢 Unternehmensinfos öffnen",
-              "button_action": "menu:corporate"
-            },
-            {
-              "q": "Warum ist ein regulierter Broker wichtig?",
-              "a": "Ein regulierter Broker arbeitet unter Aufsicht, muss Compliance-Standards erfüllen und Regeln zur Verwahrung von Kundengeldern sowie zur Transparenz einhalten."
-            },
-            {
-              "q": "Sende ich Geld an Pandora AI?",
-              "a": "Nein. Deine Gelder liegen in deinem eigenen Broker-Konto. Pandora stellt Strategien und Community-Zugang bereit, verwahrt aber keine Kundengelder."
-            },
-            {
-              "q": "Kann Pandora AI auf mein Geld zugreifen?",
-              "a": "Nein. Strategien können nur über erlaubte Systeme (z. B. Copytrading-Setup) handeln. Auszahlungen bleiben immer unter deiner Kontrolle."
-            }
-          ]
-        },
-        {
-          "id": "networking_community",
-          "title": "Netzwerk & Community",
-          "questions": [
-            {
-              "q": "Ist Pandora AI ein Affiliate-Programm?",
-              "a": "Pandora AI hat ein strukturiertes Referral- und Provisionssystem innerhalb der Sub-IB Umgebung von Axis Capital Group (IB = Introducing Broker)."
-            },
-            {
-              "q": "Muss ich Leute anwerben, um zu verdienen?",
-              "a": "Nein. Viele Mitglieder nutzen Pandora AI ausschließlich als Copytrader. Networking ist optional."
-            },
-            {
-              "q": "Wie entstehen Provisionen?",
-              "a": "Provisionen können z. B. entstehen durch:\n- Performance Fees\n- Lot-basierte Gebühren\n- Direct Revenue Commission\n\nFür Details sieh dir bitte das Video an:",
-              "link": "https://www.youtube.com/watch?v=DW8pVc-5FiY&t=17s"
-            },
-            {
-              "q": "Welche Unterstützung gibt es für Anfänger?",
-              "a": "Pandora AI bietet u. a.:\n- Community Education\n- Telegram Updates\n- Transparenz zur Strategie-Performance\n- Schritt-für-Schritt Onboarding\nZiel ist Klarheit – kein Druck."
-            },
-            {
-              "q": "Wo sehe ich Updates?",
-              "a": "Für News, Updates und Strategie-Performance trete bitte dem offiziellen Pandora AI Telegram Kanal bei:",
-              "link": "https://t.me/Pandora_AI_info"
-            },
-            {
-              "q": "Wo bekomme ich Informationen/Support zu Pandora AI?",
-              "a": "Wir haben einen öffentlichen Telegram-Kanal mit regelmäßigen Strategie-Updates, quartalsweisen Performance-Reviews sowie edukativen und motivierenden Inhalten. Der Kanal ist für bestehende Mitglieder und Interessenten offen, anonym und enthält auch Zugang zum dedizierten Broker Support Bot.",
-              "link": "https://t.me/Axisvip_bot"
-            },
-            {
-              "q": "Was ist das Mindestkapital, um Pandora AI zu starten?",
-              "a": "Das minimale Trading-Produkt für Pandora AI beträgt 300 USD. Meist wird per Krypto eingezahlt, andere Methoden können verfügbar sein. Wenn du die Präsentation noch nicht gesehen hast, nutze bitte den Button unten.",
-              "button_text": "🎥 Präsentationen öffnen",
-              "button_action": "menu:presentations"
-            }
-          ]
-        },
-        {
-          "id": "mindset_expectations",
-          "title": "Mindset & Erwartungen",
-          "questions": [
-            {
-              "q": "Ist Copytrading passives Einkommen?",
-              "a": "Es kann teil-passiv sein, aber nicht „einrichten und vergessen“. Du solltest Performance beobachten, Risiken verstehen und informiert bleiben."
-            },
-            {
-              "q": "Sind Gewinne garantiert?",
-              "a": "Nein. Es gibt keine garantierten Renditen. Plattformen mit Gewinn-Garantien solltest du meiden."
-            },
-            {
-              "q": "Für wen ist das geeignet?",
-              "a": "Pandora AI ist geeignet für Personen, die:\n- Trading-Exposure ohne manuelle Ausführung möchten\n- Transparenz und Struktur schätzen\n- eine regulierte Broker-Umgebung bevorzugen\n- langfristig denken, nicht auf schnelle Gewinne aus sind"
             }
           ]
         }
