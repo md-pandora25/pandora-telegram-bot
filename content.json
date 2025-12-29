@@ -12,58 +12,24 @@
         "menu_disclaimer": "⚠️ Disclaimer",
         "menu_language": "🌍 Language",
         "menu_about": "❓ What is Pandora AI?",
-
-        "menu_set_links": "🔗 Set Referral Links",
-        "menu_share_invite": "📩 Share My Invite Link",
-
         "about_watch_btn": "🎥 Watch the short presentation",
-
         "back_to_menu": "⬅️ Back to menu",
         "back": "⬅️ Back",
         "home": "🏠 Home",
-
         "language_title": "🌍 Language\n\nChoose your language:",
-
         "presentations_title": "🎥 Presentations",
         "corporate_title": "🏢 Corporate Info",
         "join_title": "🤝 How to Join\n\nChoose an option:",
         "faq_topics_title": "📌 FAQ Topics\n\nChoose a topic:",
-
-        "join_open_step1": "🔗 Register & Trade (Sponsor Link)",
-        "join_open_step1_doc": "📄 Step 1 Setup Document",
-        "join_confirm_step1": "✅ I have completed Step 1",
-        "join_open_step2": "🔗 Become an Affiliate (Sponsor Link)",
-        "join_open_step2_doc": "📄 Step 2 Application Document",
-        "join_go_step1": "➡️ Go to Step 1",
-        "join_back": "⬅️ Back",
-
-        "join_step1_title": "🤝 Step One – Register and Trade",
-        "join_step2_title": "🗣 Step Two – Become an Affiliate",
-        "join_step2_locked": "🔒 Step Two is locked until you complete Step One.\n\nPlease complete Step 1 first, then tap “I have completed Step 1”.",
-        "join_step1_confirmed": "✅ Step 1 confirmed.\n\nYou can now continue to Step 2 if you want to become an affiliate.",
-        "join_no_sponsor": "⚠️ I can’t see a sponsor link.\n\nPlease ask the person who sent you this bot for their personal invite link.\n\nYou can still open the Step 1 setup document below.",
-        "join_no_sponsor_step2": "⚠️ I can’t see a sponsor affiliate link.\n\nPlease ask your sponsor for their affiliate link.\n\nYou can still open the Step 2 document below.",
-
-        "ref_set_step1_prompt": "🔗 Set your referral links\n\nPlease paste your full Step 1 (Register & Trade) referral URL now:",
-        "ref_set_step2_prompt": "✅ Step 1 link saved.\n\nNow paste your full Step 2 (Become an Affiliate) referral URL:",
-        "ref_invalid_url": "❌ That doesn’t look like a valid URL. Please paste a link starting with https://",
-        "ref_flow_error": "Something went wrong saving Step 1. Please tap “Set Referral Links” again.",
-        "ref_saved_done": "✅ Saved!\n\nYour personal invite link is:\n{invite}\n\nSend this link to prospects. When they open it, the bot will show *your* Step 1 and Step 2 links in the Join menu.",
-        "ref_not_set": "You haven’t set your referral links yet.\n\nTap “Set Referral Links” first.",
-        "ref_share_text": "📩 Share your personal invite link:\n\n{invite}\n\nWhen a prospect opens this link, the bot will automatically show your Step 1 and Step 2 links in the Join section.",
-
         "faq_search_btn": "🔎 FAQ Search",
         "faq_search_prompt": "🔎 FAQ Search\n\nType a keyword or question (example: drawdown, broker, affiliate).",
         "search_result": "Search result",
         "more_info": "More info:",
         "select_question": "Select a question:",
         "no_questions": "No questions in this topic yet.",
-
         "join_step1_btn": "🤝 Step One – Register and Trade",
         "join_step2_btn": "🗣 Step Two – Become an Affiliate",
-
         "help_text": "Use /start to open the menu.\nYou can also type a question and I’ll try to match it to an FAQ.\nTip: Open FAQ → FAQ Search to search by keyword.",
-
         "no_links": "No links added yet.",
         "no_faq": "No FAQ topics configured yet.",
         "topic_not_found": "Topic not found.",
@@ -72,50 +38,103 @@
         "unknown_option": "Unknown option.",
         "disclaimer_missing": "Disclaimer image is not configured yet. Please contact support.",
         "search_no_match": "🔎 I didn’t find a close match.\n\nTry a different keyword, or browse the FAQ Topics.",
-        "typed_no_match": "I didn’t find a close match. Try the FAQ menu, or rephrase your question.\n\nTip: Open FAQ → FAQ Search to search by keyword.\n\nType /start to open the menu."
+        "typed_no_match": "I didn’t find a close match. Try the FAQ menu, or rephrase your question.\n\nTip: Open FAQ → FAQ Search to search by keyword.\n\nType /start to open the menu.",
+        "menu_set_links": "🔗 Set Referral Links",
+        "menu_share_invite": "📩 Share My Invite Link",
+        "join_open_step1": "🔗 Register & Trade (Sponsor Link)",
+        "join_open_step1_doc": "📄 Step 1 Setup Document",
+        "join_confirm_step1": "✅ I have completed Step 1",
+        "join_open_step2": "🔗 Become an Affiliate (Sponsor Link)",
+        "join_open_step2_doc": "📄 Step 2 Application Document",
+        "join_go_step1": "➡️ Go to Step 1",
+        "join_back": "⬅️ Back",
+        "join_step1_title": "🤝 Step One – Register and Trade",
+        "join_step2_title": "🗣 Step Two – Become an Affiliate\n\n🚨 WARNING 🚨\nIf you have hit the \"I have completed Step 1\" button in order to complete Step 2 – Become an affiliate when you haven't actually registered a trading account, you will simply not receive any affiliate commissions.\n\nPlease ensure you register and purchase your trading account from Step 1 first.",
+        "join_step2_locked": "🔒 Step Two is locked until you complete Step One.\n\nPlease complete Step 1 first, then tap “I have completed Step 1”.",
+        "join_step1_confirmed": "✅ Step 1 confirmed.\n\nYou can now continue to Step 2 if you want to become an affiliate.\n\n🚨 WARNING 🚨\nIf you have hit the \"I have completed Step 1\" button in order to complete Step 2 – Become an affiliate when you haven't actually registered a trading account, you will simply not receive any affiliate commissions.\n\nPlease ensure you register and purchase your trading account from Step 1 first.",
+        "join_no_sponsor": "⚠️ I can’t see a sponsor link.\n\nPlease ask the person who sent you this bot for their personal invite link.\n\nYou can still open the Step 1 setup document below.",
+        "join_no_sponsor_step2": "⚠️ I can’t see a sponsor affiliate link.\n\nPlease ask your sponsor for their affiliate link.\n\nYou can still open the Step 2 document below.",
+        "ref_set_step1_prompt": "🔗 Set your referral links\n\nPlease paste your full Step 1 (Register & Trade) referral URL now:",
+        "ref_set_step2_prompt": "✅ Step 1 link saved.\n\nNow paste your full Step 2 (Become an Affiliate) referral URL:",
+        "ref_invalid_url": "❌ That doesn’t look like a valid URL. Please paste a link starting with https://",
+        "ref_flow_error": "Something went wrong saving Step 1. Please tap “Set Referral Links” again.",
+        "ref_saved_done": "✅ Saved!\n\nYour personal invite link is:\n{invite}\n\nSend this link to prospects. When they open it, the bot will show *your* Step 1 and Step 2 links in the Join menu.",
+        "ref_not_set": "You haven’t set your referral links yet.\n\nTap “Set Referral Links” first.",
+        "ref_share_text": "📩 Share your personal invite link:\n\n{invite}\n\nWhen a prospect opens this link, the bot will automatically show your Step 1 and Step 2 links in the Join section.",
+        "join_step2_ack_btn": "✅ I understand this warning",
+        "join_step2_ack_prompt": "Please confirm you understand this warning to continue."
       },
-
       "welcome_message": "Welcome to the Pandora AI community Bot 😊. Please select from the below menu so I can do my best to assist you",
-
       "about_text": "❓ What is Pandora AI?\n\nPandora AI has been built as a community-driven project, connecting everyday individuals with a regulated broker, automated trading strategies and passive commission structures without needing experience.\n\nHere’s what makes it accessible:\n- 100% automated copy trading\n- No trading knowledge required\n- You control your own broker account\n- Pandora AI never holds or handles any client funds\n- You can deposit, withdraw profits, or stop anytime\n\nAnd most importantly: Axis offers all Pandora AI members access to 10X instant funded accounts, meaning your deposit becomes a larger trading balance. Still under your full control.\nThis structure is a game-changer for people who want exposure without needing large starting capital.\n\nPandora AI integrates multiple strategy styles, including human and algorithmic trading all curated for low drawdown and high consistency. There are three currently recommended strategies. Dynamics, Samurai and The Secret.\n\nThink of it as trading with more weight, without needing more personal capital.\n\nTo find out more detail watch this short presentation or use the other menu items as you need.",
       "about_url": "https://www.youtube.com/watch?v=ugryotNp__4&t=17s",
-
       "presentations": [
-        { "title": "Pandora Intro Video", "url": "https://www.youtube.com/watch?v=ugryotNp__4&t=11s" },
-        { "title": "Pandora Intro PDF", "url": "https://drive.google.com/file/d/1cKGj5VPMz2nmj9EWdhI0rZQguuMjVPTI/view" }
+        {
+          "title": "Pandora Intro Video",
+          "url": "https://www.youtube.com/watch?v=ugryotNp__4&t=11s"
+        },
+        {
+          "title": "Pandora Intro PDF",
+          "url": "https://drive.google.com/file/d/1cKGj5VPMz2nmj9EWdhI0rZQguuMjVPTI/view"
+        }
       ],
-
       "documents": [
-        { "title": "Axis Group Overview (PDF)", "url": "https://drive.google.com/file/d/1dB_HRnPgCKV3fCevbMNgeSPrcVl9KFTX/view" },
-        { "title": "Axis Capital Platform (PDF)", "url": "https://drive.google.com/file/d/1ULpSi5B-spW4RXOJVsBvSrTlZuJMU_IF/view" },
-        { "title": "Axis Capital Broker A vs B (PDF)", "url": "https://drive.google.com/file/d/16vssIYt3zI5KKPk9fvfYIwAr5XsfsI-5/view" },
-        { "title": "Axis Summary (DOC)", "url": "https://drive.google.com/file/d/1OazgRdYMp4kc03vrpyVf8fDYS8e2Cmau/view" }
+        {
+          "title": "Axis Group Overview (PDF)",
+          "url": "https://drive.google.com/file/d/1dB_HRnPgCKV3fCevbMNgeSPrcVl9KFTX/view"
+        },
+        {
+          "title": "Axis Capital Platform (PDF)",
+          "url": "https://drive.google.com/file/d/1ULpSi5B-spW4RXOJVsBvSrTlZuJMU_IF/view"
+        },
+        {
+          "title": "Axis Capital Broker A vs B (PDF)",
+          "url": "https://drive.google.com/file/d/16vssIYt3zI5KKPk9fvfYIwAr5XsfsI-5/view"
+        },
+        {
+          "title": "Axis Summary (DOC)",
+          "url": "https://drive.google.com/file/d/1OazgRdYMp4kc03vrpyVf8fDYS8e2Cmau/view"
+        }
       ],
-
       "join_step1_text": "🤝 Step One – Register and Trade\n\n1) Grab your referral link\n2) Register and purchase your account\n3) Connect your account to a strategy\n4) Start enjoying profits! 💰💰\n\n🔗 Follow the setup steps in this document\nhttps://drive.google.com/file/d/1d3hpel1Oho62JOAbmm0MXgrXhq7JeHvq/view",
       "join_step2_text": "🗣 Step Two – Become an Affiliate\n\nYOU MUST HAVE COMPLETED 🤝 STEP ONE ON THE MENU FIRST!!\n\n1) Get your sponsors Affiliate link\n2) Complete the application process\n3) Receive your approval within 24 hours\n\n🔗 Follow the application steps in this guide\nhttps://drive.google.com/file/d/1lhdNSD0FFwrNtgzwUb5_liQrW8E--WaN/view",
-
       "join_step1_doc_url": "https://drive.google.com/file/d/1d3hpel1Oho62JOAbmm0MXgrXhq7JeHvq/view",
       "join_step2_doc_url": "https://drive.google.com/file/d/1lhdNSD0FFwrNtgzwUb5_liQrW8E--WaN/view",
-
       "support_text": "🧑‍💻 Support\n\nIf you need help, please contact your referrer initially. If you have registered or are an affiliate and you have an issue or query with your Axis Brokerage account feel free to use the dedicated support bot. 🤖 \nthis dedicated bot was provide by the broker for the sole use of the Pandora AI community. It is manned by support staff dedicated to help our community members, The bot is not manned 24 hours a day at this stage, so please be patient.\n\n🤖https://t.me/Axisvip_bot",
-
       "disclaimer_text": "⚠️ DISCLAIMER \n\n Please ensure you read the attached disclaimer! \nThis bot or platform does not provide financial advice, but is a tool to help provide or guide you to the support you require.\n\n 📚Always do your own research!!📚",
-
       "disclaimer_image_url": "https://drive.google.com/uc?export=download&id=1IBv7B7mN2p9wROBcbIXjdXhjHg4az3t2",
-
       "faq_topics": [
         {
           "id": "copytrading",
           "title": "CopyTrading",
           "questions": [
-            { "q": "What is copy trading?", "a": "Copy trading allows you to automatically replicate the trades of experienced traders or AI strategies in your own account. When the strategy trades, your account mirrors those actions proportionally." },
-            { "q": "Do I need trading experience to copy trade?", "a": "No. Copy trading is designed for beginners. You don’t place trades manually—your role is to choose a strategy, manage risk settings, and monitor performance." },
-            { "q": "Can I lose money with copy trading?", "a": "Yes. All trading involves risk. Copy trading reduces the need for decision-making, but it does not remove market risk. This is why risk controls and drawdown limits are important." },
-            { "q": "What markets are typically traded?", "a": "Within Pandora AI, strategies focus on liquid markets such as Forex and Gold, which are widely traded and commonly used in automated systems." },
-            { "q": "What is drawdown and why does it matter?", "a": "Drawdown refers to how much an account can decline from its highest value. Pandora AI strategies are designed with a predefined maximum drawdown of 10% to help manage downside risk, and all strategies are configured to manage stoploss within these parameters" },
-            { "q": "What is an amplified or instant funded account?", "a": "An amplified (instant funded) account multiplies your trading exposure relative to your deposit. For example, with Pandora AI and Axis a 10x amplified account means your capital is increased tenfold for trading purposes—while risk limits remain clearly defined." },
-            { "q": "Can I stop copy trading at any time?", "a": "Yes. You can pause or disconnect from a strategy whenever you choose, subject to broker platform rules." },
+            {
+              "q": "What is copy trading?",
+              "a": "Copy trading allows you to automatically replicate the trades of experienced traders or AI strategies in your own account. When the strategy trades, your account mirrors those actions proportionally."
+            },
+            {
+              "q": "Do I need trading experience to copy trade?",
+              "a": "No. Copy trading is designed for beginners. You don’t place trades manually—your role is to choose a strategy, manage risk settings, and monitor performance."
+            },
+            {
+              "q": "Can I lose money with copy trading?",
+              "a": "Yes. All trading involves risk. Copy trading reduces the need for decision-making, but it does not remove market risk. This is why risk controls and drawdown limits are important."
+            },
+            {
+              "q": "What markets are typically traded?",
+              "a": "Within Pandora AI, strategies focus on liquid markets such as Forex and Gold, which are widely traded and commonly used in automated systems."
+            },
+            {
+              "q": "What is drawdown and why does it matter?",
+              "a": "Drawdown refers to how much an account can decline from its highest value. Pandora AI strategies are designed with a predefined maximum drawdown of 10% to help manage downside risk, and all strategies are configured to manage stoploss within these parameters"
+            },
+            {
+              "q": "What is an amplified or instant funded account?",
+              "a": "An amplified (instant funded) account multiplies your trading exposure relative to your deposit. For example, with Pandora AI and Axis a 10x amplified account means your capital is increased tenfold for trading purposes—while risk limits remain clearly defined."
+            },
+            {
+              "q": "Can I stop copy trading at any time?",
+              "a": "Yes. You can pause or disconnect from a strategy whenever you choose, subject to broker platform rules."
+            },
             {
               "q": "How are lot fees calculated?",
               "a": "Lot fees aren’t a single fee — they’re the sum of spread, commission, and swap, scaled by lot size. Within the Pandora AI project these lot fees are distributed between the broker and the IB Structure (Affiliate Network) in accordance to the reward plan. If you have not seen these details please click the link below.",
@@ -128,17 +147,100 @@
               "button_text": "🎥 Open Presentations",
               "button_action": "menu:presentations"
             },
-            { "q": "How do you explain exactly what 10% drawdown means?", "a": "A 10% drawdown is the difference between your account’s highest balance and its current balance, expressed as a percentage. In forex trading, a 10% drawdown means your trading account has lost 10% of its value from a peak." },
+            {
+              "q": "How do you explain exactly what 10% drawdown means?",
+              "a": "A 10% drawdown is the difference between your account’s highest balance and its current balance, expressed as a percentage. In forex trading, a 10% drawdown means your trading account has lost 10% of its value from a peak."
+            },
             {
               "q": "Can I top up my account even if there are current live trades?",
               "a": "YES, You can top up your trading account at anytime, All you need to know is the account number you wish to topup and how much you wish to deposit. Then simply visit the link below.",
               "link": "https://axisfunded.com/top-up/pandora"
             }
           ]
+        },
+        {
+          "id": "broker_safety",
+          "title": "The Broker & Safety",
+          "questions": [
+            {
+              "q": "What broker does Pandora AI use for its CopyTrading Strategies?",
+              "a": "Pandora AI has partnered with Axis Capital group for broker services and copy trading infrastructure.\n\nFor detailed broker documentation and corporate information, please head to Corporate Info, linked below for your convenience",
+              "button_text": "🏢 Open Corporate Info",
+              "button_action": "menu:corporate"
+            },
+            {
+              "q": "Why does using a regulated broker matter?",
+              "a": "A regulated broker like Axis Capital Group operates under financial oversight, must meet compliance standards, and follows rules around client fund handling, reporting, and transparency."
+            },
+            {
+              "q": "Do I send money to Pandora AI?",
+              "a": "No. Funds are held in your own broker account. Pandora provides strategies and community access—it does not custody client funds."
+            },
+            {
+              "q": "Can Pandora AI access my money?",
+              "a": "No. Pandora strategies can trade on your account only via permissioned systems (such as copy trading setups). Withdrawals always remain under your control."
+            }
+          ]
+        },
+        {
+          "id": "networking_community",
+          "title": "Network & Community",
+          "questions": [
+            {
+              "q": "Is Pandora AI an affiliate program?",
+              "a": "Pandora AI has a structured referral and commission system, withing Axis Capital Groups, Sub IB environment. (IB = Introducing Broker, often compared to an affiliate in other industries)"
+            },
+            {
+              "q": "Do I need to recruit people to earn?",
+              "a": "No. Many members participate purely as copy traders. Networking is optional and suited to those who enjoy community building and education."
+            },
+            {
+              "q": "How are commissions generated?",
+              "a": "Commissions withing the Pandora AI project may be generated from:\n- Trading performance fees\n- Lot-based fees\n- Direct Revenue Commission\n\nPlease watch the video in the link below to get a full overview of the project and commissions available",
+              "link": "https://www.youtube.com/watch?v=ugryotNp__4&t=13s"
+            },
+            {
+              "q": "What support is available for beginners?",
+              "a": "Pandora AI emphasizes:\n- Community education\n- Telegram updates\n- Strategy performance transparency\n- Step-by-step onboarding guidance\nThe goal is clarity, not pressure."
+            },
+            {
+              "q": "Where do I see updates?",
+              "a": "For the latest News, Updates, Strategy Performance and other key information please ensure you have subscribed to the official Pandora AI Telegram group.",
+              "link": "https://t.me/Pandora_AI_info"
+            },
+            {
+              "q": "Where can I get information/support on Pandora AI?",
+              "a": "We have a public telegram channel that provides regular strategy performance updates, quarterly performance reviews, educational and motivational content. This channel is open to both existing members and your prospects. It is an anonymous channel and also contains access to a dedicated Broker Support Bot",
+              "link": "https://t.me/Pandora_AI_info"
+            },
+            {
+              "q": "What’s the minimum amount of capital that I need to join Pandora AI?",
+              "a": "The minimum trading product you can purchase for Pandora AI is $300 USD, most commonly deposited using crypto, but other deposit methods are available. If you have not yet seen the presentation for Pandora AI, please hit the button to Presentations below",
+              "button_text": "🎥 Open Presentations",
+              "button_action": "menu:presentations"
+            }
+          ]
+        },
+        {
+          "id": "mindset_expectations",
+          "title": "Mindset and Expectations",
+          "questions": [
+            {
+              "q": "Is copy trading passive income?",
+              "a": "It can be semi-passive, but not “set and forget.” You should still monitor performance, understand risk, and stay informed."
+            },
+            {
+              "q": "Are profits guaranteed?",
+              "a": "No. There are no guaranteed returns. Any platform claiming guaranteed profits should be avoided."
+            },
+            {
+              "q": "Who is this suitable for?",
+              "a": "Pandora AI is suited for people who:\n- Want exposure to trading without manual execution\n- Value transparency and structure\n- Prefer regulated broker environments\n- Are interested in long-term participation, not quick wins"
+            }
+          ]
         }
       ]
     },
-
     "de": {
       "language_label": "Deutsch",
       "ui": {
@@ -150,58 +252,24 @@
         "menu_disclaimer": "⚠️ Haftungsausschluss",
         "menu_language": "🌍 Sprache",
         "menu_about": "❓ Was ist Pandora AI?",
-
-        "menu_set_links": "🔗 Referral-Links speichern",
-        "menu_share_invite": "📩 Meinen Einladungslink teilen",
-
         "about_watch_btn": "🎥 Kurze Präsentation ansehen",
-
         "back_to_menu": "⬅️ Zurück zum Menü",
         "back": "⬅️ Zurück",
         "home": "🏠 Start",
-
         "language_title": "🌍 Sprache\n\nBitte wähle deine Sprache:",
-
         "presentations_title": "🎥 Präsentationen",
         "corporate_title": "🏢 Unternehmensinfos",
         "join_title": "🤝 So trittst du bei\n\nBitte wähle eine Option:",
         "faq_topics_title": "📌 FAQ-Themen\n\nBitte wähle ein Thema:",
-
-        "join_open_step1": "🔗 Registrieren & Traden (Sponsor-Link)",
-        "join_open_step1_doc": "📄 Schritt 1 Setup-Dokument",
-        "join_confirm_step1": "✅ Ich habe Schritt 1 abgeschlossen",
-        "join_open_step2": "🔗 Affiliate werden (Sponsor-Link)",
-        "join_open_step2_doc": "📄 Schritt 2 Antrags-Dokument",
-        "join_go_step1": "➡️ Zu Schritt 1",
-        "join_back": "⬅️ Zurück",
-
-        "join_step1_title": "🤝 Schritt 1 – Registrieren & traden",
-        "join_step2_title": "🗣 Schritt 2 – Affiliate werden",
-        "join_step2_locked": "🔒 Schritt 2 ist gesperrt, bis du Schritt 1 abgeschlossen hast.\n\nBitte schließe zuerst Schritt 1 ab und tippe dann „Ich habe Schritt 1 abgeschlossen“.",
-        "join_step1_confirmed": "✅ Schritt 1 bestätigt.\n\nDu kannst jetzt mit Schritt 2 fortfahren, wenn du Affiliate werden möchtest.",
-        "join_no_sponsor": "⚠️ Ich sehe keinen Sponsor-Link.\n\nBitte frage die Person, die dir diesen Bot geschickt hat, nach ihrem persönlichen Einladungslink.\n\nDu kannst trotzdem unten das Schritt-1-Dokument öffnen.",
-        "join_no_sponsor_step2": "⚠️ Ich sehe keinen Sponsor-Affiliate-Link.\n\nBitte frage deinen Sponsor nach seinem Affiliate-Link.\n\nDu kannst trotzdem unten das Schritt-2-Dokument öffnen.",
-
-        "ref_set_step1_prompt": "🔗 Referral-Links speichern\n\nBitte sende jetzt deinen vollständigen Schritt-1-Referral-Link (Registrieren & Traden):",
-        "ref_set_step2_prompt": "✅ Schritt-1-Link gespeichert.\n\nSende jetzt deinen vollständigen Schritt-2-Referral-Link (Affiliate werden):",
-        "ref_invalid_url": "❌ Das sieht nicht wie eine gültige URL aus. Bitte sende einen Link, der mit https:// beginnt.",
-        "ref_flow_error": "Beim Speichern von Schritt 1 ist etwas schiefgelaufen. Bitte tippe erneut auf „Referral-Links speichern“.",
-        "ref_saved_done": "✅ Gespeichert!\n\nDein persönlicher Einladungslink ist:\n{invite}\n\nSende diesen Link an Interessenten. Wenn sie ihn öffnen, zeigt der Bot automatisch *deine* Schritt-1- und Schritt-2-Links im Join-Menü an.",
-        "ref_not_set": "Du hast deine Referral-Links noch nicht gespeichert.\n\nTippe zuerst auf „Referral-Links speichern“.",
-        "ref_share_text": "📩 Teile deinen persönlichen Einladungslink:\n\n{invite}\n\nWenn ein Interessent diesen Link öffnet, zeigt der Bot automatisch deine Schritt-1- und Schritt-2-Links im Join-Bereich an.",
-
         "faq_search_btn": "🔎 FAQ-Suche",
         "faq_search_prompt": "🔎 FAQ-Suche\n\nSchreibe ein Stichwort oder eine Frage (z. B.: drawdown, broker, affiliate).",
         "search_result": "Suchergebnis",
         "more_info": "Mehr Infos:",
         "select_question": "Bitte wähle eine Frage:",
         "no_questions": "In diesem Thema gibt es noch keine Fragen.",
-
         "join_step1_btn": "🤝 Schritt 1 – Registrieren & traden",
         "join_step2_btn": "🗣 Schritt 2 – Affiliate werden",
-
         "help_text": "Nutze /start, um das Menü zu öffnen.\nDu kannst auch eine Frage tippen und ich versuche, sie einem FAQ zuzuordnen.\nTipp: FAQ → FAQ-Suche nutzen, um nach Stichworten zu suchen.",
-
         "no_links": "Noch keine Links hinzugefügt.",
         "no_faq": "Noch keine FAQ-Themen konfiguriert.",
         "topic_not_found": "Thema nicht gefunden.",
@@ -210,44 +278,79 @@
         "unknown_option": "Unbekannte Option.",
         "disclaimer_missing": "Das Haftungsausschluss-Bild ist noch nicht konfiguriert. Bitte kontaktiere den Support.",
         "search_no_match": "🔎 Ich habe keine passende Antwort gefunden.\n\nVersuche ein anderes Stichwort oder schaue in den FAQ-Themen nach.",
-        "typed_no_match": "Ich habe keine passende Antwort gefunden. Bitte nutze das FAQ-Menü oder formuliere deine Frage anders.\n\nTipp: FAQ → FAQ-Suche.\n\nTippe /start, um das Menü zu öffnen."
+        "typed_no_match": "Ich habe keine passende Antwort gefunden. Bitte nutze das FAQ-Menü oder formuliere deine Frage anders.\n\nTipp: FAQ → FAQ-Suche.\n\nTippe /start, um das Menü zu öffnen.",
+        "menu_set_links": "🔗 Referral-Links speichern",
+        "menu_share_invite": "📩 Meinen Einladungslink teilen",
+        "join_open_step1": "🔗 Registrieren & Traden (Sponsor-Link)",
+        "join_open_step1_doc": "📄 Schritt 1 Setup-Dokument",
+        "join_confirm_step1": "✅ Ich habe Schritt 1 abgeschlossen",
+        "join_open_step2": "🔗 Affiliate werden (Sponsor-Link)",
+        "join_open_step2_doc": "📄 Schritt 2 Antrags-Dokument",
+        "join_go_step1": "➡️ Zu Schritt 1",
+        "join_back": "⬅️ Zurück",
+        "join_step1_title": "🤝 Schritt 1 – Registrieren & traden",
+        "join_step2_title": "🗣 Schritt 2 – Affiliate werden\n\n🚨 WARNUNG 🚨\nWenn du den Button „Ich habe Schritt 1 abgeschlossen“ nur gedrückt hast, um Schritt 2 – Affiliate werden – zu starten, ohne tatsächlich ein Trading-Konto registriert und gekauft zu haben, erhältst du keine Affiliate-Provisionen.\n\nBitte stelle sicher, dass du dein Trading-Konto in Schritt 1 zuerst registrierst und kaufst.",
+        "join_step2_locked": "🔒 Schritt 2 ist gesperrt, bis du Schritt 1 abgeschlossen hast.\n\nBitte schließe zuerst Schritt 1 ab und tippe dann „Ich habe Schritt 1 abgeschlossen“.",
+        "join_step1_confirmed": "✅ Schritt 1 bestätigt.\n\nDu kannst jetzt mit Schritt 2 fortfahren, wenn du Affiliate werden möchtest.\n\n🚨 WARNUNG 🚨\nWenn du den Button „Ich habe Schritt 1 abgeschlossen“ nur gedrückt hast, um Schritt 2 – Affiliate werden – zu starten, ohne tatsächlich ein Trading-Konto registriert und gekauft zu haben, erhältst du keine Affiliate-Provisionen.\n\nBitte stelle sicher, dass du dein Trading-Konto in Schritt 1 zuerst registrierst und kaufst.",
+        "join_no_sponsor": "⚠️ Ich sehe keinen Sponsor-Link.\n\nBitte frage die Person, die dir diesen Bot geschickt hat, nach ihrem persönlichen Einladungslink.\n\nDu kannst trotzdem unten das Schritt-1-Dokument öffnen.",
+        "join_no_sponsor_step2": "⚠️ Ich sehe keinen Sponsor-Affiliate-Link.\n\nBitte frage deinen Sponsor nach seinem Affiliate-Link.\n\nDu kannst trotzdem unten das Schritt-2-Dokument öffnen.",
+        "ref_set_step1_prompt": "🔗 Referral-Links speichern\n\nBitte sende jetzt deinen vollständigen Schritt-1-Referral-Link (Registrieren & Traden):",
+        "ref_set_step2_prompt": "✅ Schritt-1-Link gespeichert.\n\nSende jetzt deinen vollständigen Schritt-2-Referral-Link (Affiliate werden):",
+        "ref_invalid_url": "❌ Das sieht nicht wie eine gültige URL aus. Bitte sende einen Link, der mit https:// beginnt.",
+        "ref_flow_error": "Beim Speichern von Schritt 1 ist etwas schiefgelaufen. Bitte tippe erneut auf „Referral-Links speichern“.",
+        "ref_saved_done": "✅ Gespeichert!\n\nDein persönlicher Einladungslink ist:\n{invite}\n\nSende diesen Link an Interessenten. Wenn sie ihn öffnen, zeigt der Bot automatisch *deine* Schritt-1- und Schritt-2-Links im Join-Menü an.",
+        "ref_not_set": "Du hast deine Referral-Links noch nicht gespeichert.\n\nTippe zuerst auf „Referral-Links speichern“.",
+        "ref_share_text": "📩 Teile deinen persönlichen Einladungslink:\n\n{invite}\n\nWenn ein Interessent diesen Link öffnet, zeigt der Bot automatisch deine Schritt-1- und Schritt-2-Links im Join-Bereich an.",
+        "join_step2_ack_btn": "✅ Ich verstehe diese Warnung",
+        "join_step2_ack_prompt": "Bitte bestätige, dass du diese Warnung verstanden hast, um fortzufahren."
       },
-
       "welcome_message": "Willkommen beim Pandora AI Community Bot 😊. Bitte wähle unten im Menü eine Option aus, damit ich dir bestmöglich helfen kann.",
-
       "about_text": "❓ Was ist Pandora AI?\n\nPandora AI wurde als Community-getriebenes Projekt aufgebaut und verbindet ganz normale Menschen mit einem regulierten Broker, automatisierten Trading-Strategien und passiven Provisionsstrukturen – ganz ohne Vorerfahrung.\n\nWarum es so zugänglich ist:\n- 100% automatisiertes Copytrading\n- Kein Trading-Wissen erforderlich\n- Du kontrollierst dein eigenes Broker-Konto\n- Pandora AI hält oder verwaltet niemals Kundengelder\n- Du kannst jederzeit einzahlen, Gewinne auszahlen oder stoppen\n\nUnd das Wichtigste: Axis bietet allen Pandora AI Mitgliedern Zugang zu 10X Instant-Funded-Konten – das bedeutet, deine Einzahlung wird zu einem größeren Trading-Balance (weiterhin vollständig unter deiner Kontrolle).\nDiese Struktur ist ein Game-Changer für Menschen, die Exposure möchten, ohne viel Startkapital zu benötigen.\n\nPandora AI integriert mehrere Strategiestile, inklusive menschlichem und algorithmischem Trading – kuratiert für niedrigen Drawdown und hohe Konstanz. Aktuell werden drei Strategien empfohlen: Dynamics, Samurai und The Secret.\n\nStell es dir vor wie Trading mit mehr Gewicht, ohne mehr eigenes Kapital einsetzen zu müssen.\n\nFür mehr Details sieh dir diese kurze Präsentation an oder nutze die anderen Menüpunkte, je nachdem was du brauchst.",
       "about_url": "https://www.youtube.com/watch?v=DW8pVc-5FiY&t=138s",
-
       "presentations": [
-        { "title": "Pandora Intro Video (DE)", "url": "https://www.youtube.com/watch?v=DW8pVc-5FiY&t=3s" },
-        { "title": "Pandora Intro PDF (DE)", "url": "https://drive.google.com/file/d/1w1LI1FlLmF3FOHRkMB6cIG_kbMLcLURj/view" }
+        {
+          "title": "Pandora Intro Video (DE)",
+          "url": "https://www.youtube.com/watch?v=DW8pVc-5FiY&t=3s"
+        },
+        {
+          "title": "Pandora Intro PDF (DE)",
+          "url": "https://drive.google.com/file/d/1w1LI1FlLmF3FOHRkMB6cIG_kbMLcLURj/view"
+        }
       ],
-
       "documents": [
-        { "title": "Axis Gruppen-Übersicht (PDF) (DE)", "url": "https://drive.google.com/file/d/1tbTtqxswyPdU6sSiYu9T9zJ1JVMbwHa-/view" },
-        { "title": "Axis Capital Plattform (PDF) (DE)", "url": "https://drive.google.com/file/d/1WHuhWxDcTlBIZs_IQCnfVGyKNIM6YQY-/view" },
-        { "title": "Axis Capital Broker A vs B (PDF) (DE)", "url": "https://drive.google.com/file/d/14R08iYd_z1o2gLzNwGxadKkqFMkEhzHP/view" },
-        { "title": "Axis Zusammenfassung (DOC) (DE)", "url": "https://drive.google.com/file/d/1zou2fKZbp0q62ULDp9a8H7hxcor4dJrX/view" }
+        {
+          "title": "Axis Gruppen-Übersicht (PDF) (DE)",
+          "url": "https://drive.google.com/file/d/1tbTtqxswyPdU6sSiYu9T9zJ1JVMbwHa-/view"
+        },
+        {
+          "title": "Axis Capital Plattform (PDF) (DE)",
+          "url": "https://drive.google.com/file/d/1WHuhWxDcTlBIZs_IQCnfVGyKNIM6YQY-/view"
+        },
+        {
+          "title": "Axis Capital Broker A vs B (PDF) (DE)",
+          "url": "https://drive.google.com/file/d/14R08iYd_z1o2gLzNwGxadKkqFMkEhzHP/view"
+        },
+        {
+          "title": "Axis Zusammenfassung (DOC) (DE)",
+          "url": "https://drive.google.com/file/d/1zou2fKZbp0q62ULDp9a8H7hxcor4dJrX/view"
+        }
       ],
-
       "join_step1_text": "🤝 Schritt 1 – Registrieren & traden\n\n1) Hole dir deinen Referral-Link\n2) Registriere dich und kaufe dein Konto\n3) Verbinde dein Konto mit einer Strategie\n4) Starte mit dem Copytrading 💰💰\n\n🔗 Folge den Setup-Schritten in diesem Dokument:\nhttps://drive.google.com/file/d/1l1zX3o551Nx0eP2uH4FGSRqBVY7xGNEy/view",
       "join_step2_text": "🗣 Schritt 2 – Affiliate werden\n\nDU MUSST ZUERST 🤝 SCHRITT 1 IM MENÜ ABGESCHLOSSEN HABEN!!\n\n1) Hole dir den Affiliate-Link deines Sponsors\n2) Fülle den Antrag aus\n3) Erhalte deine Freigabe innerhalb von 24 Stunden\n\n🔗 Folge den Schritten in diesem Leitfaden:\nhttps://drive.google.com/file/d/1Ruadyf4mXqJMaVz89968pCkF553u54sc/view",
-
       "join_step1_doc_url": "https://drive.google.com/file/d/1l1zX3o551Nx0eP2uH4FGSRqBVY7xGNEy/view",
       "join_step2_doc_url": "https://drive.google.com/file/d/1Ruadyf4mXqJMaVz89968pCkF553u54sc/view",
-
       "support_text": "🧑‍💻 Support\n\nWenn du Hilfe brauchst, kontaktiere zunächst deinen Referrer. Wenn du registriert bist oder Affiliate bist und ein Problem oder eine Frage zu deinem Axis Brokerage Konto hast, nutze bitte den dedizierten Support-Bot. 🤖\nDieser Bot wurde vom Broker speziell für die Pandora AI Community bereitgestellt. Er wird von Support-Mitarbeitern betreut (nicht 24/7), bitte habe etwas Geduld.\n\n🤖 https://t.me/Axisvip_bot",
-
       "disclaimer_text": "⚠️ HINWEIS \n\nBitte lies den Haftungsausschluss sorgfältig.\nDieser Bot/diese Plattform stellt keine Finanzberatung dar, sondern dient als Tool zur Information und Orientierung.\n\n📚 Bitte immer selbst recherchieren! 📚",
-
       "disclaimer_image_url": "https://drive.google.com/uc?export=download&id=1kAhmlQy0bf-Ya99nLMTfF5yI_DmBM-lp",
-
       "faq_topics": [
         {
           "id": "copytrading",
           "title": "CopyTrading",
           "questions": [
-            { "q": "Was ist Copytrading?", "a": "Copytrading ermöglicht es dir, Trades von erfahrenen Tradern oder KI-Strategien automatisch in deinem eigenen Konto zu spiegeln. Wenn die Strategie handelt, wird dies in deinem Konto proportional nachgebildet." }
+            {
+              "q": "Was ist Copytrading?",
+              "a": "Copytrading ermöglicht es dir, Trades von erfahrenen Tradern oder KI-Strategien automatisch in deinem eigenen Konto zu spiegeln. Wenn die Strategie handelt, wird dies in deinem Konto proportional nachgebildet."
+            }
           ]
         }
       ]
