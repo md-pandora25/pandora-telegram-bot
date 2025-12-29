@@ -25,8 +25,8 @@ logger = logging.getLogger("pandora_faq_bot")
 
 DATA_FILE = "content.json"
 
-BOT_USERNAME_DEFAULT = "PandoraAI_FAQ_bot"  # your bot username
-DB_PATH_DEFAULT = "/data/referrals.db"      # use a Railway Volume mounted at /data
+BOT_USERNAME_DEFAULT = "PandoraAI_FAQ_bot"
+DB_PATH_DEFAULT = "/data/referrals.db"
 
 
 # -----------------------------
@@ -95,7 +95,6 @@ def db_init() -> None:
     conn = db_connect()
     cur = conn.cursor()
 
-    # sponsor/referrer data: short code -> step1_url, step2_url
     cur.execute("""
         CREATE TABLE IF NOT EXISTS referrers (
             ref_code TEXT PRIMARY KEY,
@@ -106,7 +105,6 @@ def db_init() -> None:
         )
     """)
 
-    # user state: telegram_user_id -> sponsor code + step1 confirmation
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             telegram_user_id INTEGER PRIMARY KEY,
@@ -138,7 +136,6 @@ def upsert_user(telegram_user_id: int, sponsor_code: Optional[str] = None) -> No
             (telegram_user_id, sponsor_code),
         )
     else:
-        # only overwrite sponsor_code if we received one and user doesn't already have one
         existing = row["sponsor_code"]
         if sponsor_code and not existing:
             cur.execute(
@@ -164,11 +161,13 @@ def get_user_state(telegram_user_id: int) -> Dict[str, Any]:
 def set_step1_confirmed(telegram_user_id: int, confirmed: bool) -> None:
     conn = db_connect()
     cur = conn.cursor()
-    cur.execute(
-        "INSERT INTO users (telegram_user_id, sponsor_code, step1_confirmed) VALUES (?, NULL, ?) "
-        "ON CONFLICT(telegram_user_id) DO UPDATE SET step1_confirmed=?, updated_at=CURRENT_TIMESTAMP",
-        (telegram_user_id, 1 if confirmed else 0, 1 if confirmed else 0),
-    )
+    cur.execute("""
+        INSERT INTO users (telegram_user_id, sponsor_code, step1_confirmed)
+        VALUES (?, NULL, ?)
+        ON CONFLICT(telegram_user_id) DO UPDATE SET
+            step1_confirmed=excluded.step1_confirmed,
+            updated_at=CURRENT_TIMESTAMP
+    """, (telegram_user_id, 1 if confirmed else 0))
     conn.commit()
     conn.close()
 
@@ -196,7 +195,6 @@ def get_referrer_by_code(ref_code: str) -> Optional[Dict[str, Any]]:
 
 
 def upsert_referrer(owner_telegram_id: int, step1_url: str, step2_url: str) -> Dict[str, Any]:
-    # if ref exists for owner, update URLs; else create new ref_code
     existing = get_referrer_by_owner(owner_telegram_id)
     conn = db_connect()
     cur = conn.cursor()
@@ -208,7 +206,6 @@ def upsert_referrer(owner_telegram_id: int, step1_url: str, step2_url: str) -> D
             (step1_url, step2_url, ref_code),
         )
     else:
-        # ensure unique code
         ref_code = generate_ref_code()
         while get_referrer_by_code(ref_code):
             ref_code = generate_ref_code()
@@ -241,12 +238,8 @@ def build_invite_link(ref_code: str) -> str:
 def build_main_menu(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     keyboard = [
         [InlineKeyboardButton(ui_get(content, "menu_language", "🌍 Language"), callback_data="menu:language")],
-
-        # Referral tools
         [InlineKeyboardButton(ui_get(content, "menu_set_links", "🔗 Set Referral Links"), callback_data="menu:set_links")],
         [InlineKeyboardButton(ui_get(content, "menu_share_invite", "📩 Share My Invite Link"), callback_data="menu:share_invite")],
-
-        # About + normal menus
         [InlineKeyboardButton(ui_get(content, "menu_about", "❓ What is Pandora AI?"), callback_data="menu:about")],
         [InlineKeyboardButton(ui_get(content, "menu_presentations", "🎥 Presentations"), callback_data="menu:presentations")],
         [InlineKeyboardButton(ui_get(content, "menu_join", "🤝 How to Join"), callback_data="menu:join")],
@@ -300,7 +293,8 @@ def join_step1_kb(content: Dict[str, Any], sponsor_step1_url: Optional[str], ste
     rows = []
     if sponsor_step1_url:
         rows.append([InlineKeyboardButton(ui_get(content, "join_open_step1", "🔗 Register & Trade (Sponsor Link)"), url=sponsor_step1_url)])
-    rows.append([InlineKeyboardButton(ui_get(content, "join_open_step1_doc", "📄 Step 1 Setup Document"), url=step1_doc_url)])
+    if step1_doc_url:
+        rows.append([InlineKeyboardButton(ui_get(content, "join_open_step1_doc", "📄 Step 1 Setup Document"), url=step1_doc_url)])
     rows.append([InlineKeyboardButton(ui_get(content, "join_confirm_step1", "✅ I have completed Step 1"), callback_data="join:confirm_step1")])
     rows.append([InlineKeyboardButton(ui_get(content, "join_back", "⬅️ Back"), callback_data="menu:join")])
     rows.append([InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")])
@@ -319,7 +313,8 @@ def join_step2_kb(content: Dict[str, Any], sponsor_step2_url: Optional[str], ste
     rows = []
     if sponsor_step2_url:
         rows.append([InlineKeyboardButton(ui_get(content, "join_open_step2", "🔗 Become an Affiliate (Sponsor Link)"), url=sponsor_step2_url)])
-    rows.append([InlineKeyboardButton(ui_get(content, "join_open_step2_doc", "📄 Step 2 Application Document"), url=step2_doc_url)])
+    if step2_doc_url:
+        rows.append([InlineKeyboardButton(ui_get(content, "join_open_step2_doc", "📄 Step 2 Application Document"), url=step2_doc_url)])
     rows.append([InlineKeyboardButton(ui_get(content, "join_back", "⬅️ Back"), callback_data="menu:join")])
     rows.append([InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")])
     return InlineKeyboardMarkup(rows)
@@ -343,7 +338,7 @@ def language_kb(all_content: Dict[str, Any], active_lang: str) -> InlineKeyboard
 
 
 # -----------------------------
-# FAQ (Topic-based) + Search (localized)
+# FAQ (Topic-based) + Search (active-language only)
 # -----------------------------
 def faq_topics_kb(content: Dict[str, Any], faq_topics: List[Dict[str, Any]]) -> InlineKeyboardMarkup:
     keyboard = []
@@ -402,12 +397,7 @@ def flatten_faq_topics(faq_topics: List[Dict[str, Any]]) -> List[Dict[str, Any]]
 # -----------------------------
 # Safe render helper
 # -----------------------------
-async def safe_show_menu_message(
-    query,
-    context: ContextTypes.DEFAULT_TYPE,
-    text: str,
-    reply_markup: InlineKeyboardMarkup
-) -> None:
+async def safe_show_menu_message(query, context: ContextTypes.DEFAULT_TYPE, text: str, reply_markup: InlineKeyboardMarkup) -> None:
     chat_id = query.message.chat.id
     try:
         await query.edit_message_text(text, reply_markup=reply_markup)
@@ -420,20 +410,12 @@ async def safe_show_menu_message(
 # Commands
 # -----------------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """
-    1) capture sponsor code from deep link (?start=CODE)
-    2) show language selector first (if not chosen)
-    3) otherwise show normal main menu
-    """
     db_init()
-
     all_content = load_all_content()
 
-    # capture sponsor code from /start args (deep link)
     sponsor_code = None
     if context.args and len(context.args) > 0:
         sponsor_code = (context.args[0] or "").strip().upper()
-        # basic sanity: only accept short codes A-Z0-9 up to 12
         if not re.match(r"^[A-Z0-9]{4,12}$", sponsor_code):
             sponsor_code = None
 
@@ -445,59 +427,42 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         default_lang = get_default_lang(all_content)
         default_block = all_content.get("languages", {}).get(default_lang, {})
         title = ui_get(default_block, "language_title", "🌍 Language\n\nChoose your language:")
-        await update.message.reply_text(
-            title,
-            reply_markup=language_kb(all_content, active_lang=default_lang)
-        )
+        await update.message.reply_text(title, reply_markup=language_kb(all_content, active_lang=default_lang))
         return
 
     content = get_active_content(context, all_content)
-    welcome = content.get("welcome_message", ui_get(content, "welcome_fallback", "Welcome! Choose an option below."))
     context.user_data["faq_search_mode"] = False
-    await update.message.reply_text(welcome, reply_markup=build_main_menu(content))
+    await update.message.reply_text(content.get("welcome_message", "Welcome!"), reply_markup=build_main_menu(content))
 
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     all_content = load_all_content()
     content = get_active_content(context, all_content)
-    await update.message.reply_text(
-        ui_get(content, "help_text",
-               "Use /start to open the menu.\n"
-               "You can also type a question and I’ll try to match it to an FAQ.\n"
-               "Tip: Open FAQ → FAQ Search to search by keyword."),
-        reply_markup=build_main_menu(content),
-    )
+    await update.message.reply_text(ui_get(content, "help_text", "Use /start to open the menu."), reply_markup=build_main_menu(content))
 
 
 # -----------------------------
-# Callback handlers
+# Menu handlers
 # -----------------------------
 async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
 
     db_init()
-
     all_content = load_all_content()
     content = get_active_content(context, all_content)
+
     action = query.data.split(":", 1)[1]
 
     if action == "home":
         context.user_data["faq_search_mode"] = False
-
         if not user_has_selected_lang(context, all_content):
             default_lang = get_default_lang(all_content)
             default_block = all_content.get("languages", {}).get(default_lang, {})
             title = ui_get(default_block, "language_title", "🌍 Language\n\nChoose your language:")
             await safe_show_menu_message(query, context, title, language_kb(all_content, active_lang=default_lang))
             return
-
-        await safe_show_menu_message(
-            query,
-            context,
-            content.get("welcome_message", ui_get(content, "welcome_fallback", "Choose an option:")),
-            build_main_menu(content),
-        )
+        await safe_show_menu_message(query, context, content.get("welcome_message", "Choose an option:"), build_main_menu(content))
         return
 
     if action == "language":
@@ -506,51 +471,26 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await safe_show_menu_message(query, context, title, language_kb(all_content, active_lang))
         return
 
-    # Set Referral Links (two-step input)
     if action == "set_links":
         context.user_data["awaiting_step1_url"] = True
         context.user_data["awaiting_step2_url"] = False
-        await safe_show_menu_message(
-            query,
-            context,
-            ui_get(content, "ref_set_step1_prompt",
-                   "🔗 Set your referral links\n\nPlease paste your full Step 1 (Register & Trade) referral URL now:"),
-            back_to_menu_kb(content),
-        )
+        await safe_show_menu_message(query, context, ui_get(content, "ref_set_step1_prompt", "Paste Step 1 URL:"), back_to_menu_kb(content))
         return
 
-    # Share Invite Link
     if action == "share_invite":
         telegram_user_id = query.from_user.id
         ref = get_referrer_by_owner(telegram_user_id)
         if not ref:
-            await safe_show_menu_message(
-                query,
-                context,
-                ui_get(content, "ref_not_set",
-                       "You haven’t set your referral links yet.\n\nTap “Set Referral Links” first."),
-                back_to_menu_kb(content),
-            )
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
             return
-
         invite = build_invite_link(ref["ref_code"])
-        share_text = ui_get(content, "ref_share_text",
-                            "📩 Share your personal invite link:\n\n{invite}\n\nWhen a prospect opens this link, the bot will automatically show *your* Step 1 and Step 2 links in the Join section.")
-        share_text = share_text.replace("{invite}", invite)
-
+        share_text = ui_get(content, "ref_share_text", "Share your invite:\n\n{invite}").replace("{invite}", invite)
         await safe_show_menu_message(query, context, share_text, back_to_menu_kb(content))
         return
 
-    # About
     if action == "about":
-        about_text = (content.get("about_text") or "").strip()
-        about_url = (content.get("about_url") or "").strip()
-
-        if not about_text:
-            about_text = ui_get(content, "about_fallback", "Pandora AI overview is not configured yet.")
-        if not about_url:
-            about_url = "https://www.youtube.com/"
-
+        about_text = (content.get("about_text") or "").strip() or ui_get(content, "about_fallback", "Not configured.")
+        about_url = (content.get("about_url") or "").strip() or "https://www.youtube.com/"
         await safe_show_menu_message(query, context, about_text, about_kb(content, about_url))
         return
 
@@ -558,28 +498,20 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         items = content.get("presentations", [])
         text = ui_get(content, "presentations_title", "🎥 Presentations")
         if not items:
-            text += "\n\n" + ui_get(content, "no_links", "No links added yet.")
-            await safe_show_menu_message(query, context, text, back_to_menu_kb(content))
+            await safe_show_menu_message(query, context, text + "\n\n" + ui_get(content, "no_links", "No links."), back_to_menu_kb(content))
             return
         await safe_show_menu_message(query, context, text, links_list_kb(content, items, back_target="home"))
         return
 
-    # Join home (sponsor-aware)
     if action == "join":
-        await safe_show_menu_message(
-            query,
-            context,
-            ui_get(content, "join_title", "🤝 How to Join\n\nChoose an option:"),
-            join_home_kb(content)
-        )
+        await safe_show_menu_message(query, context, ui_get(content, "join_title", "🤝 How to Join\n\nChoose an option:"), join_home_kb(content))
         return
 
     if action == "corporate":
         items = content.get("documents", [])
         text = ui_get(content, "corporate_title", "🏢 Corporate Info")
         if not items:
-            text += "\n\n" + ui_get(content, "no_links", "No links added yet.")
-            await safe_show_menu_message(query, context, text, back_to_menu_kb(content))
+            await safe_show_menu_message(query, context, text + "\n\n" + ui_get(content, "no_links", "No links."), back_to_menu_kb(content))
             return
         await safe_show_menu_message(query, context, text, links_list_kb(content, items, back_target="home"))
         return
@@ -588,20 +520,14 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         context.user_data["faq_search_mode"] = False
         faq_topics = content.get("faq_topics", [])
         if not faq_topics:
-            await safe_show_menu_message(query, context, ui_get(content, "no_faq", "No FAQ topics configured yet."), back_to_menu_kb(content))
+            await safe_show_menu_message(query, context, ui_get(content, "no_faq", "No FAQ topics."), back_to_menu_kb(content))
             return
-        await safe_show_menu_message(
-            query,
-            context,
-            ui_get(content, "faq_topics_title", "📌 FAQ Topics\n\nChoose a topic:"),
-            faq_topics_kb(content, faq_topics),
-        )
+        await safe_show_menu_message(query, context, ui_get(content, "faq_topics_title", "📌 FAQ Topics\n\nChoose a topic:"), faq_topics_kb(content, faq_topics))
         return
 
     if action == "support":
         context.user_data["faq_search_mode"] = False
-        support_text = content.get("support_text", ui_get(content, "support_fallback", "🧑‍💻 Support\n\nAdd support instructions here."))
-        await safe_show_menu_message(query, context, support_text, back_to_menu_kb(content))
+        await safe_show_menu_message(query, context, content.get("support_text", "Support"), back_to_menu_kb(content))
         return
 
     if action == "disclaimer":
@@ -609,28 +535,13 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         disclaimer_image_url = (content.get("disclaimer_image_url") or "").strip()
         disclaimer_caption = (content.get("disclaimer_text") or "").strip()
         chat_id = query.message.chat.id
-
         if not disclaimer_image_url:
-            await context.bot.send_message(
-                chat_id=chat_id,
-                text=ui_get(content, "disclaimer_missing", "Disclaimer image is not configured yet. Please contact support."),
-                reply_markup=back_to_menu_kb(content)
-            )
+            await context.bot.send_message(chat_id=chat_id, text=ui_get(content, "disclaimer_missing", "Missing."), reply_markup=back_to_menu_kb(content))
             return
-
         if disclaimer_caption:
-            await context.bot.send_photo(
-                chat_id=chat_id,
-                photo=disclaimer_image_url,
-                caption=disclaimer_caption[:1024],
-                reply_markup=back_to_menu_kb(content)
-            )
+            await context.bot.send_photo(chat_id=chat_id, photo=disclaimer_image_url, caption=disclaimer_caption[:1024], reply_markup=back_to_menu_kb(content))
         else:
-            await context.bot.send_photo(
-                chat_id=chat_id,
-                photo=disclaimer_image_url,
-                reply_markup=back_to_menu_kb(content)
-            )
+            await context.bot.send_photo(chat_id=chat_id, photo=disclaimer_image_url, reply_markup=back_to_menu_kb(content))
         return
 
     await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), build_main_menu(content))
@@ -641,9 +552,7 @@ async def on_language_click(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     await query.answer()
 
     all_content = load_all_content()
-    data = query.data  # lang:set:xx
-
-    parts = data.split(":")
+    parts = query.data.split(":")
     if len(parts) == 3 and parts[0] == "lang" and parts[1] == "set":
         lang_code = (parts[2] or "").strip().lower()
         languages = all_content.get("languages", {})
@@ -652,12 +561,7 @@ async def on_language_click(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     content = get_active_content(context, all_content)
     context.user_data["faq_search_mode"] = False
-    await safe_show_menu_message(
-        query,
-        context,
-        content.get("welcome_message", ui_get(content, "welcome_fallback", "Choose an option:")),
-        build_main_menu(content),
-    )
+    await safe_show_menu_message(query, context, content.get("welcome_message", "Welcome!"), build_main_menu(content))
 
 
 async def on_join_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -665,12 +569,12 @@ async def on_join_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     await query.answer()
 
     db_init()
-
     all_content = load_all_content()
     content = get_active_content(context, all_content)
-    action = query.data.split(":", 1)[1]
 
+    action = query.data.split(":", 1)[1]
     user_id = query.from_user.id
+
     state = get_user_state(user_id)
     sponsor_code = state.get("sponsor_code")
     step1_confirmed = state.get("step1_confirmed", False)
@@ -688,61 +592,36 @@ async def on_join_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     if action == "step1":
         if not sponsor_step1_url:
-            text = ui_get(content, "join_no_sponsor",
-                          "⚠️ I can’t see a sponsor link.\n\nPlease ask the person who sent you this bot for their personal invite link.\n\nYou can still open the Step 1 setup document below.")
+            text = ui_get(content, "join_no_sponsor", "No sponsor link. You can still open the Step 1 document.")
         else:
             text = ui_get(content, "join_step1_title", "🤝 Step One – Register and Trade")
 
-        await safe_show_menu_message(
-            query,
-            context,
-            text,
-            join_step1_kb(content, sponsor_step1_url, step1_doc_url),
-        )
+        await safe_show_menu_message(query, context, text, join_step1_kb(content, sponsor_step1_url, step1_doc_url))
         return
 
     if action == "confirm_step1":
         set_step1_confirmed(user_id, True)
-        await safe_show_menu_message(
-            query,
-            context,
-            ui_get(content, "join_step1_confirmed",
-                   "✅ Step 1 confirmed.\n\nYou can now continue to Step 2 if you want to become an affiliate."),
-            join_home_kb(content),
-        )
+        await safe_show_menu_message(query, context, ui_get(content, "join_step1_confirmed", "✅ Step 1 confirmed."), join_home_kb(content))
         return
 
     if action == "step2":
         if not step1_confirmed:
-            await safe_show_menu_message(
-                query,
-                context,
-                ui_get(content, "join_step2_locked",
-                       "🔒 Step Two is locked until you complete Step One.\n\nPlease complete Step 1 first, then tap “I have completed Step 1”."),
-                join_step2_locked_kb(content)
-            )
+            await safe_show_menu_message(query, context, ui_get(content, "join_step2_locked", "Step 2 locked."), join_step2_locked_kb(content))
             return
 
         if not sponsor_step2_url:
-            text = ui_get(content, "join_no_sponsor_step2",
-                          "⚠️ I can’t see a sponsor affiliate link.\n\nPlease ask your sponsor for their affiliate link.\n\nYou can still open the Step 2 document below.")
+            text = ui_get(content, "join_no_sponsor_step2", "No sponsor affiliate link. You can still open Step 2 document.")
         else:
             text = ui_get(content, "join_step2_title", "🗣 Step Two – Become an Affiliate")
 
-        await safe_show_menu_message(
-            query,
-            context,
-            text,
-            join_step2_kb(content, sponsor_step2_url, step2_doc_url),
-_attach_stub_="stub",
-        )
+        await safe_show_menu_message(query, context, text, join_step2_kb(content, sponsor_step2_url, step2_doc_url))
         return
 
     await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), join_home_kb(content))
 
 
 # -----------------------------
-# FAQ and text matching (active-language only)
+# FAQ + search
 # -----------------------------
 def normalize(text: str) -> str:
     return " ".join(text.lower().strip().split())
@@ -774,25 +653,12 @@ async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     if data == "faq_search:start":
         context.user_data["faq_search_mode"] = True
-        await safe_show_menu_message(
-            query,
-            context,
-            ui_get(content, "faq_search_prompt", "🔎 FAQ Search\n\nType a keyword or question (example: drawdown, broker, affiliate)."),
-            faq_search_result_kb(content)
-        )
+        await safe_show_menu_message(query, context, ui_get(content, "faq_search_prompt", "Type a keyword."), faq_search_result_kb(content))
         return
 
     if data == "faq_back_topics":
         context.user_data["faq_search_mode"] = False
-        if not faq_topics:
-            await safe_show_menu_message(query, context, ui_get(content, "no_faq", "No FAQ topics configured yet."), back_to_menu_kb(content))
-            return
-        await safe_show_menu_message(
-            query,
-            context,
-            ui_get(content, "faq_topics_title", "📌 FAQ Topics\n\nChoose a topic:"),
-            faq_topics_kb(content, faq_topics),
-        )
+        await safe_show_menu_message(query, context, ui_get(content, "faq_topics_title", "📌 FAQ Topics\n\nChoose a topic:"), faq_topics_kb(content, faq_topics))
         return
 
     if data.startswith("faq_back_topic:"):
@@ -802,14 +668,8 @@ async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if not topic:
             await safe_show_menu_message(query, context, ui_get(content, "topic_not_found", "Topic not found."), back_to_menu_kb(content))
             return
-
         questions = topic.get("questions", [])
-        await safe_show_menu_message(
-            query,
-            context,
-            f"📂 {topic.get('title', ui_get(content, 'faq_topic_fallback', 'FAQ'))}\n\n{ui_get(content, 'select_question', 'Select a question:')}",
-            faq_questions_kb(content, topic_id, questions),
-        )
+        await safe_show_menu_message(query, context, f"📂 {topic.get('title','FAQ')}\n\n{ui_get(content,'select_question','Select a question:')}", faq_questions_kb(content, topic_id, questions))
         return
 
     if data.startswith("faq_topic:"):
@@ -819,26 +679,8 @@ async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if not topic:
             await safe_show_menu_message(query, context, ui_get(content, "topic_not_found", "Topic not found."), back_to_menu_kb(content))
             return
-
         questions = topic.get("questions", [])
-        if not questions:
-            await safe_show_menu_message(
-                query,
-                context,
-                f"📂 {topic.get('title', ui_get(content, 'faq_topic_fallback', 'FAQ'))}\n\n{ui_get(content, 'no_questions', 'No questions in this topic yet.')}",
-                InlineKeyboardMarkup([
-                    [InlineKeyboardButton(ui_get(content, "back_to_topics", "⬅️ Back to topics"), callback_data="faq_back_topics")],
-                    [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
-                ])
-            )
-            return
-
-        await safe_show_menu_message(
-            query,
-            context,
-            f"📂 {topic.get('title', ui_get(content, 'faq_topic_fallback', 'FAQ'))}\n\n{ui_get(content, 'select_question', 'Select a question:')}",
-            faq_questions_kb(content, topic_id, questions),
-        )
+        await safe_show_menu_message(query, context, f"📂 {topic.get('title','FAQ')}\n\n{ui_get(content,'select_question','Select a question:')}", faq_questions_kb(content, topic_id, questions))
         return
 
     if data.startswith("faq_q:"):
@@ -847,163 +689,94 @@ async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         if len(parts) != 3:
             await safe_show_menu_message(query, context, ui_get(content, "invalid_selection", "Invalid selection."), back_to_menu_kb(content))
             return
-
         topic_id = parts[1]
-        try:
-            q_idx = int(parts[2])
-        except ValueError:
-            await safe_show_menu_message(query, context, ui_get(content, "invalid_selection", "Invalid selection."), back_to_menu_kb(content))
-            return
-
+        q_idx = int(parts[2])
         topic = next((t for t in faq_topics if t.get("id") == topic_id), None)
         if not topic:
             await safe_show_menu_message(query, context, ui_get(content, "topic_not_found", "Topic not found."), back_to_menu_kb(content))
             return
-
         questions = topic.get("questions", [])
         if q_idx < 0 or q_idx >= len(questions):
             await safe_show_menu_message(query, context, ui_get(content, "question_not_found", "Question not found."), back_to_menu_kb(content))
             return
-
         item = questions[q_idx]
-        q = item.get("q", ui_get(content, "question", "Question"))
-        a = item.get("a", ui_get(content, "answer", "Answer"))
+        q = item.get("q", "Question")
+        a = item.get("a", "Answer")
         extra = (item.get("link", "") or "").strip()
-
-        text = f"{q}\n\n{a}"
-        if extra:
-            text += f"\n\n{ui_get(content, 'more_info', 'More info:')} {extra}"
-
+        text = f"{q}\n\n{a}" + (f"\n\n{ui_get(content,'more_info','More info:')} {extra}" if extra else "")
         await safe_show_menu_message(query, context, text, faq_answer_kb_with_jump(content, topic_id, item))
         return
 
     await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), back_to_menu_kb(content))
 
 
-# -----------------------------
-# Text messages (Referral link capture OR FAQ matching)
-# -----------------------------
 async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db_init()
-
     all_content = load_all_content()
     content = get_active_content(context, all_content)
 
     msg = update.message.text.strip()
     user_id = update.effective_user.id
 
-    # Referral capture flow (two-step)
     if context.user_data.get("awaiting_step1_url") is True:
         if not looks_like_url(msg):
-            await update.message.reply_text(
-                ui_get(content, "ref_invalid_url", "❌ That doesn’t look like a valid URL. Please paste a link starting with https://"),
-                reply_markup=build_main_menu(content),
-            )
+            await update.message.reply_text(ui_get(content, "ref_invalid_url", "Invalid URL."), reply_markup=build_main_menu(content))
             return
-
         context.user_data["temp_step1_url"] = msg
         context.user_data["awaiting_step1_url"] = False
         context.user_data["awaiting_step2_url"] = True
-
-        await update.message.reply_text(
-            ui_get(content, "ref_set_step2_prompt",
-                   "✅ Step 1 link saved.\n\nNow paste your full Step 2 (Become an Affiliate) referral URL:"),
-            reply_markup=build_main_menu(content),
-        )
+        await update.message.reply_text(ui_get(content, "ref_set_step2_prompt", "Now paste Step 2 URL:"), reply_markup=build_main_menu(content))
         return
 
     if context.user_data.get("awaiting_step2_url") is True:
         if not looks_like_url(msg):
-            await update.message.reply_text(
-                ui_get(content, "ref_invalid_url", "❌ That doesn’t look like a valid URL. Please paste a link starting with https://"),
-                reply_markup=build_main_menu(content),
-            )
+            await update.message.reply_text(ui_get(content, "ref_invalid_url", "Invalid URL."), reply_markup=build_main_menu(content))
             return
-
         step1_url = (context.user_data.get("temp_step1_url") or "").strip()
-        step2_url = msg
-
         if not step1_url:
-            # safety: restart the flow
             context.user_data["awaiting_step2_url"] = False
-            await update.message.reply_text(
-                ui_get(content, "ref_flow_error",
-                       "Something went wrong saving Step 1. Please tap “Set Referral Links” again."),
-                reply_markup=build_main_menu(content),
-            )
+            await update.message.reply_text(ui_get(content, "ref_flow_error", "Flow error."), reply_markup=build_main_menu(content))
             return
-
-        ref = upsert_referrer(user_id, step1_url=step1_url, step2_url=step2_url)
-
-        # clear temp state
+        ref = upsert_referrer(user_id, step1_url=step1_url, step2_url=msg)
         context.user_data["temp_step1_url"] = ""
         context.user_data["awaiting_step2_url"] = False
-
         invite = build_invite_link(ref["ref_code"])
-        done_text = ui_get(content, "ref_saved_done",
-                           "✅ Saved!\n\nYour personal invite link is:\n{invite}\n\nSend this link to prospects. When they open it, the bot will show *your* Step 1 and Step 2 links in the Join menu.")
-        done_text = done_text.replace("{invite}", invite)
-
+        done_text = ui_get(content, "ref_saved_done", "Saved:\n{invite}").replace("{invite}", invite)
         await update.message.reply_text(done_text, reply_markup=build_main_menu(content))
         return
 
-    # FAQ normal behavior
     faq_items = flatten_faq_topics(content.get("faq_topics", []))
     if not faq_items:
-        await update.message.reply_text(
-            ui_get(content, "no_faq", "No FAQs configured yet. Use /start to see the menu."),
-            reply_markup=build_main_menu(content)
-        )
+        await update.message.reply_text(ui_get(content, "no_faq", "No FAQs configured."), reply_markup=build_main_menu(content))
         return
 
     if context.user_data.get("faq_search_mode") is True:
         idx, score = best_faq_match(msg, faq_items)
         context.user_data["faq_search_mode"] = False
-
         if idx == -1 or score < 0.25:
-            await update.message.reply_text(
-                ui_get(content, "search_no_match",
-                       "🔎 I didn’t find a close match.\n\nTry a different keyword, or browse the FAQ Topics."),
-                reply_markup=faq_search_result_kb(content),
-            )
+            await update.message.reply_text(ui_get(content, "search_no_match", "No match."), reply_markup=faq_search_result_kb(content))
             return
-
         item = faq_items[idx]
-        q = item.get("q", ui_get(content, "question", "Question"))
-        a = item.get("a", ui_get(content, "answer", "Answer"))
+        q = item.get("q", "Question")
+        a = item.get("a", "Answer")
         extra = (item.get("link", "") or "").strip()
-
-        text = f"🔎 {ui_get(content, 'search_result', 'Search result')}:\n\n{q}\n\n{a}"
-        if extra:
-            text += f"\n\n{ui_get(content, 'more_info', 'More info:')} {extra}"
-
+        text = f"🔎 {ui_get(content,'search_result','Search result')}:\n\n{q}\n\n{a}" + (f"\n\n{ui_get(content,'more_info','More info:')} {extra}" if extra else "")
         await update.message.reply_text(text, reply_markup=faq_search_result_kb(content))
         return
 
     idx, score = best_faq_match(msg, faq_items)
     if idx == -1 or score < 0.25:
-        await update.message.reply_text(
-            ui_get(content, "typed_no_match",
-                   "I didn’t find a close match. Try the FAQ menu, or rephrase your question.\n\nTip: Open FAQ → FAQ Search to search by keyword.\n\nType /start to open the menu."),
-            reply_markup=build_main_menu(content),
-        )
+        await update.message.reply_text(ui_get(content, "typed_no_match", "No match."), reply_markup=build_main_menu(content))
         return
 
     item = faq_items[idx]
-    q = item.get("q", ui_get(content, "question", "Question"))
-    a = item.get("a", ui_get(content, "answer", "Answer"))
+    q = item.get("q", "Question")
+    a = item.get("a", "Answer")
     extra = (item.get("link", "") or "").strip()
-
-    text = f"{q}\n\n{a}"
-    if extra:
-        text += f"\n\n{ui_get(content, 'more_info', 'More info:')} {extra}"
-
+    text = f"{q}\n\n{a}" + (f"\n\n{ui_get(content,'more_info','More info:')} {extra}" if extra else "")
     await update.message.reply_text(text, reply_markup=build_main_menu(content))
 
 
-# -----------------------------
-# Main
-# -----------------------------
 def main() -> None:
     token = (os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip()
     if not token:
