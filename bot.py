@@ -1,7 +1,11 @@
 import os
 import json
 import logging
-from typing import Dict, Any, List, Tuple
+import re
+import sqlite3
+import secrets
+import string
+from typing import Dict, Any, List, Tuple, Optional
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import (
@@ -20,6 +24,9 @@ logging.basicConfig(
 logger = logging.getLogger("pandora_faq_bot")
 
 DATA_FILE = "content.json"
+
+BOT_USERNAME_DEFAULT = "PandoraAI_FAQ_bot"  # your bot username
+DB_PATH_DEFAULT = "/data/referrals.db"      # use a Railway Volume mounted at /data
 
 
 # -----------------------------
@@ -60,7 +67,6 @@ def get_active_content(context: ContextTypes.DEFAULT_TYPE, all_content: Dict[str
     languages = all_content.get("languages", {})
     if isinstance(languages, dict) and lang in languages:
         return languages[lang]
-    # fallback: legacy single-language file
     return all_content
 
 
@@ -71,12 +77,176 @@ def ui_get(content: Dict[str, Any], key: str, fallback: str) -> str:
 
 
 # -----------------------------
+# SQLite persistence
+# -----------------------------
+def get_db_path() -> str:
+    return (os.environ.get("REFERRAL_DB_PATH") or DB_PATH_DEFAULT).strip()
+
+
+def db_connect() -> sqlite3.Connection:
+    path = get_db_path()
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    conn = sqlite3.connect(path)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def db_init() -> None:
+    conn = db_connect()
+    cur = conn.cursor()
+
+    # sponsor/referrer data: short code -> step1_url, step2_url
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS referrers (
+            ref_code TEXT PRIMARY KEY,
+            owner_telegram_id INTEGER NOT NULL,
+            step1_url TEXT NOT NULL,
+            step2_url TEXT NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # user state: telegram_user_id -> sponsor code + step1 confirmation
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            telegram_user_id INTEGER PRIMARY KEY,
+            sponsor_code TEXT,
+            step1_confirmed INTEGER DEFAULT 0,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def generate_ref_code(length: int = 6) -> str:
+    alphabet = string.ascii_uppercase + string.digits
+    return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def upsert_user(telegram_user_id: int, sponsor_code: Optional[str] = None) -> None:
+    conn = db_connect()
+    cur = conn.cursor()
+
+    cur.execute("SELECT telegram_user_id, sponsor_code FROM users WHERE telegram_user_id=?", (telegram_user_id,))
+    row = cur.fetchone()
+
+    if row is None:
+        cur.execute(
+            "INSERT INTO users (telegram_user_id, sponsor_code, step1_confirmed) VALUES (?, ?, 0)",
+            (telegram_user_id, sponsor_code),
+        )
+    else:
+        # only overwrite sponsor_code if we received one and user doesn't already have one
+        existing = row["sponsor_code"]
+        if sponsor_code and not existing:
+            cur.execute(
+                "UPDATE users SET sponsor_code=?, updated_at=CURRENT_TIMESTAMP WHERE telegram_user_id=?",
+                (sponsor_code, telegram_user_id),
+            )
+
+    conn.commit()
+    conn.close()
+
+
+def get_user_state(telegram_user_id: int) -> Dict[str, Any]:
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT sponsor_code, step1_confirmed FROM users WHERE telegram_user_id=?", (telegram_user_id,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return {"sponsor_code": None, "step1_confirmed": False}
+    return {"sponsor_code": row["sponsor_code"], "step1_confirmed": bool(row["step1_confirmed"])}
+
+
+def set_step1_confirmed(telegram_user_id: int, confirmed: bool) -> None:
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT INTO users (telegram_user_id, sponsor_code, step1_confirmed) VALUES (?, NULL, ?) "
+        "ON CONFLICT(telegram_user_id) DO UPDATE SET step1_confirmed=?, updated_at=CURRENT_TIMESTAMP",
+        (telegram_user_id, 1 if confirmed else 0, 1 if confirmed else 0),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_referrer_by_owner(owner_telegram_id: int) -> Optional[Dict[str, Any]]:
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT ref_code, step1_url, step2_url FROM referrers WHERE owner_telegram_id=?", (owner_telegram_id,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {"ref_code": row["ref_code"], "step1_url": row["step1_url"], "step2_url": row["step2_url"]}
+
+
+def get_referrer_by_code(ref_code: str) -> Optional[Dict[str, Any]]:
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("SELECT ref_code, step1_url, step2_url FROM referrers WHERE ref_code=?", (ref_code,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {"ref_code": row["ref_code"], "step1_url": row["step1_url"], "step2_url": row["step2_url"]}
+
+
+def upsert_referrer(owner_telegram_id: int, step1_url: str, step2_url: str) -> Dict[str, Any]:
+    # if ref exists for owner, update URLs; else create new ref_code
+    existing = get_referrer_by_owner(owner_telegram_id)
+    conn = db_connect()
+    cur = conn.cursor()
+
+    if existing:
+        ref_code = existing["ref_code"]
+        cur.execute(
+            "UPDATE referrers SET step1_url=?, step2_url=? WHERE ref_code=?",
+            (step1_url, step2_url, ref_code),
+        )
+    else:
+        # ensure unique code
+        ref_code = generate_ref_code()
+        while get_referrer_by_code(ref_code):
+            ref_code = generate_ref_code()
+
+        cur.execute(
+            "INSERT INTO referrers (ref_code, owner_telegram_id, step1_url, step2_url) VALUES (?, ?, ?, ?)",
+            (ref_code, owner_telegram_id, step1_url, step2_url),
+        )
+
+    conn.commit()
+    conn.close()
+    return {"ref_code": ref_code, "step1_url": step1_url, "step2_url": step2_url}
+
+
+def looks_like_url(text: str) -> bool:
+    return bool(re.match(r"^https?://", (text or "").strip(), flags=re.IGNORECASE))
+
+
+def get_bot_username() -> str:
+    return (os.environ.get("BOT_USERNAME") or BOT_USERNAME_DEFAULT).strip()
+
+
+def build_invite_link(ref_code: str) -> str:
+    return f"https://t.me/{get_bot_username()}?start={ref_code}"
+
+
+# -----------------------------
 # Keyboards / Menus (localized)
 # -----------------------------
 def build_main_menu(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     keyboard = [
         [InlineKeyboardButton(ui_get(content, "menu_language", "🌍 Language"), callback_data="menu:language")],
-        # NEW: What is Pandora AI? button between Language and Presentations
+
+        # Referral tools
+        [InlineKeyboardButton(ui_get(content, "menu_set_links", "🔗 Set Referral Links"), callback_data="menu:set_links")],
+        [InlineKeyboardButton(ui_get(content, "menu_share_invite", "📩 Share My Invite Link"), callback_data="menu:share_invite")],
+
+        # About + normal menus
         [InlineKeyboardButton(ui_get(content, "menu_about", "❓ What is Pandora AI?"), callback_data="menu:about")],
         [InlineKeyboardButton(ui_get(content, "menu_presentations", "🎥 Presentations"), callback_data="menu:presentations")],
         [InlineKeyboardButton(ui_get(content, "menu_join", "🤝 How to Join"), callback_data="menu:join")],
@@ -94,15 +264,6 @@ def back_to_menu_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     )
 
 
-def join_steps_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
-    keyboard = [
-        [InlineKeyboardButton(ui_get(content, "join_step1_btn", "🤝 Step One – Register and Trade"), callback_data="join:step1")],
-        [InlineKeyboardButton(ui_get(content, "join_step2_btn", "🗣 Step Two – Become an Affiliate"), callback_data="join:step2")],
-        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")],
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
-
 def links_list_kb(content: Dict[str, Any], items: List[Dict[str, str]], back_target: str) -> InlineKeyboardMarkup:
     keyboard = []
     for item in items:
@@ -117,16 +278,51 @@ def links_list_kb(content: Dict[str, Any], items: List[Dict[str, str]], back_tar
 
 
 def about_kb(content: Dict[str, Any], url: str) -> InlineKeyboardMarkup:
-    """
-    Button layout for the What is Pandora AI screen:
-    - Watch presentation (URL button)
-    - Back to menu
-    """
     watch_label = ui_get(content, "about_watch_btn", "🎥 Watch the short presentation")
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(watch_label, url=url)],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
     ])
+
+
+# -----------------------------
+# Join flow (sponsor-aware + Step1 gate)
+# -----------------------------
+def join_home_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "join_step1_btn", "🤝 Step One – Register and Trade"), callback_data="join:step1")],
+        [InlineKeyboardButton(ui_get(content, "join_step2_btn", "🗣 Step Two – Become an Affiliate"), callback_data="join:step2")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")],
+    ])
+
+
+def join_step1_kb(content: Dict[str, Any], sponsor_step1_url: Optional[str], step1_doc_url: str) -> InlineKeyboardMarkup:
+    rows = []
+    if sponsor_step1_url:
+        rows.append([InlineKeyboardButton(ui_get(content, "join_open_step1", "🔗 Register & Trade (Sponsor Link)"), url=sponsor_step1_url)])
+    rows.append([InlineKeyboardButton(ui_get(content, "join_open_step1_doc", "📄 Step 1 Setup Document"), url=step1_doc_url)])
+    rows.append([InlineKeyboardButton(ui_get(content, "join_confirm_step1", "✅ I have completed Step 1"), callback_data="join:confirm_step1")])
+    rows.append([InlineKeyboardButton(ui_get(content, "join_back", "⬅️ Back"), callback_data="menu:join")])
+    rows.append([InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")])
+    return InlineKeyboardMarkup(rows)
+
+
+def join_step2_locked_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "join_go_step1", "➡️ Go to Step 1"), callback_data="join:step1")],
+        [InlineKeyboardButton(ui_get(content, "join_back", "⬅️ Back"), callback_data="menu:join")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")],
+    ])
+
+
+def join_step2_kb(content: Dict[str, Any], sponsor_step2_url: Optional[str], step2_doc_url: str) -> InlineKeyboardMarkup:
+    rows = []
+    if sponsor_step2_url:
+        rows.append([InlineKeyboardButton(ui_get(content, "join_open_step2", "🔗 Become an Affiliate (Sponsor Link)"), url=sponsor_step2_url)])
+    rows.append([InlineKeyboardButton(ui_get(content, "join_open_step2_doc", "📄 Step 2 Application Document"), url=step2_doc_url)])
+    rows.append([InlineKeyboardButton(ui_get(content, "join_back", "⬅️ Back"), callback_data="menu:join")])
+    rows.append([InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")])
+    return InlineKeyboardMarkup(rows)
 
 
 # -----------------------------
@@ -212,10 +408,6 @@ async def safe_show_menu_message(
     text: str,
     reply_markup: InlineKeyboardMarkup
 ) -> None:
-    """
-    Try to edit the current message into a text menu.
-    If that fails (e.g., current message is a photo), send a new message instead.
-    """
     chat_id = query.message.chat.id
     try:
         await query.edit_message_text(text, reply_markup=reply_markup)
@@ -229,10 +421,25 @@ async def safe_show_menu_message(
 # -----------------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
-    - If user has NOT selected a language yet: show Language selector FIRST.
-    - If user has selected a language: show normal welcome + main menu in that language.
+    1) capture sponsor code from deep link (?start=CODE)
+    2) show language selector first (if not chosen)
+    3) otherwise show normal main menu
     """
+    db_init()
+
     all_content = load_all_content()
+
+    # capture sponsor code from /start args (deep link)
+    sponsor_code = None
+    if context.args and len(context.args) > 0:
+        sponsor_code = (context.args[0] or "").strip().upper()
+        # basic sanity: only accept short codes A-Z0-9 up to 12
+        if not re.match(r"^[A-Z0-9]{4,12}$", sponsor_code):
+            sponsor_code = None
+
+    telegram_user_id = update.effective_user.id if update.effective_user else None
+    if telegram_user_id:
+        upsert_user(telegram_user_id, sponsor_code=sponsor_code)
 
     if not user_has_selected_lang(context, all_content):
         default_lang = get_default_lang(all_content)
@@ -269,6 +476,8 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     query = update.callback_query
     await query.answer()
 
+    db_init()
+
     all_content = load_all_content()
     content = get_active_content(context, all_content)
     action = query.data.split(":", 1)[1]
@@ -297,7 +506,42 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await safe_show_menu_message(query, context, title, language_kb(all_content, active_lang))
         return
 
-    # NEW: What is Pandora AI?
+    # Set Referral Links (two-step input)
+    if action == "set_links":
+        context.user_data["awaiting_step1_url"] = True
+        context.user_data["awaiting_step2_url"] = False
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "ref_set_step1_prompt",
+                   "🔗 Set your referral links\n\nPlease paste your full Step 1 (Register & Trade) referral URL now:"),
+            back_to_menu_kb(content),
+        )
+        return
+
+    # Share Invite Link
+    if action == "share_invite":
+        telegram_user_id = query.from_user.id
+        ref = get_referrer_by_owner(telegram_user_id)
+        if not ref:
+            await safe_show_menu_message(
+                query,
+                context,
+                ui_get(content, "ref_not_set",
+                       "You haven’t set your referral links yet.\n\nTap “Set Referral Links” first."),
+                back_to_menu_kb(content),
+            )
+            return
+
+        invite = build_invite_link(ref["ref_code"])
+        share_text = ui_get(content, "ref_share_text",
+                            "📩 Share your personal invite link:\n\n{invite}\n\nWhen a prospect opens this link, the bot will automatically show *your* Step 1 and Step 2 links in the Join section.")
+        share_text = share_text.replace("{invite}", invite)
+
+        await safe_show_menu_message(query, context, share_text, back_to_menu_kb(content))
+        return
+
+    # About
     if action == "about":
         about_text = (content.get("about_text") or "").strip()
         about_url = (content.get("about_url") or "").strip()
@@ -307,12 +551,7 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if not about_url:
             about_url = "https://www.youtube.com/"
 
-        await safe_show_menu_message(
-            query,
-            context,
-            about_text,
-            about_kb(content, about_url),
-        )
+        await safe_show_menu_message(query, context, about_text, about_kb(content, about_url))
         return
 
     if action == "presentations":
@@ -325,12 +564,13 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await safe_show_menu_message(query, context, text, links_list_kb(content, items, back_target="home"))
         return
 
+    # Join home (sponsor-aware)
     if action == "join":
         await safe_show_menu_message(
             query,
             context,
             ui_get(content, "join_title", "🤝 How to Join\n\nChoose an option:"),
-            join_steps_kb(content)
+            join_home_kb(content)
         )
         return
 
@@ -424,21 +664,81 @@ async def on_join_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     query = update.callback_query
     await query.answer()
 
+    db_init()
+
     all_content = load_all_content()
     content = get_active_content(context, all_content)
     action = query.data.split(":", 1)[1]
 
+    user_id = query.from_user.id
+    state = get_user_state(user_id)
+    sponsor_code = state.get("sponsor_code")
+    step1_confirmed = state.get("step1_confirmed", False)
+
+    sponsor_step1_url = None
+    sponsor_step2_url = None
+    if sponsor_code:
+        ref = get_referrer_by_code(sponsor_code)
+        if ref:
+            sponsor_step1_url = ref.get("step1_url")
+            sponsor_step2_url = ref.get("step2_url")
+
+    step1_doc_url = (content.get("join_step1_doc_url") or "").strip()
+    step2_doc_url = (content.get("join_step2_doc_url") or "").strip()
+
     if action == "step1":
-        text = content.get("join_step1_text", ui_get(content, "join_step1_fallback", "✅ Step One – Register and Trade\n\n(Configure join_step1_text in content.json)"))
-        await safe_show_menu_message(query, context, text, join_steps_kb(content))
+        if not sponsor_step1_url:
+            text = ui_get(content, "join_no_sponsor",
+                          "⚠️ I can’t see a sponsor link.\n\nPlease ask the person who sent you this bot for their personal invite link.\n\nYou can still open the Step 1 setup document below.")
+        else:
+            text = ui_get(content, "join_step1_title", "🤝 Step One – Register and Trade")
+
+        await safe_show_menu_message(
+            query,
+            context,
+            text,
+            join_step1_kb(content, sponsor_step1_url, step1_doc_url),
+        )
+        return
+
+    if action == "confirm_step1":
+        set_step1_confirmed(user_id, True)
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "join_step1_confirmed",
+                   "✅ Step 1 confirmed.\n\nYou can now continue to Step 2 if you want to become an affiliate."),
+            join_home_kb(content),
+        )
         return
 
     if action == "step2":
-        text = content.get("join_step2_text", ui_get(content, "join_step2_fallback", "🤝 Step Two – Become an Affiliate\n\n(Configure join_step2_text in content.json)"))
-        await safe_show_menu_message(query, context, text, join_steps_kb(content))
+        if not step1_confirmed:
+            await safe_show_menu_message(
+                query,
+                context,
+                ui_get(content, "join_step2_locked",
+                       "🔒 Step Two is locked until you complete Step One.\n\nPlease complete Step 1 first, then tap “I have completed Step 1”."),
+                join_step2_locked_kb(content)
+            )
+            return
+
+        if not sponsor_step2_url:
+            text = ui_get(content, "join_no_sponsor_step2",
+                          "⚠️ I can’t see a sponsor affiliate link.\n\nPlease ask your sponsor for their affiliate link.\n\nYou can still open the Step 2 document below.")
+        else:
+            text = ui_get(content, "join_step2_title", "🗣 Step Two – Become an Affiliate")
+
+        await safe_show_menu_message(
+            query,
+            context,
+            text,
+            join_step2_kb(content, sponsor_step2_url, step2_doc_url),
+_attach_stub_="stub",
+        )
         return
 
-    await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), join_steps_kb(content))
+    await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), join_home_kb(content))
 
 
 # -----------------------------
@@ -580,13 +880,75 @@ async def on_faq_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), back_to_menu_kb(content))
 
 
+# -----------------------------
+# Text messages (Referral link capture OR FAQ matching)
+# -----------------------------
 async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    db_init()
+
     all_content = load_all_content()
     content = get_active_content(context, all_content)
 
-    faq_items = flatten_faq_topics(content.get("faq_topics", []))
     msg = update.message.text.strip()
+    user_id = update.effective_user.id
 
+    # Referral capture flow (two-step)
+    if context.user_data.get("awaiting_step1_url") is True:
+        if not looks_like_url(msg):
+            await update.message.reply_text(
+                ui_get(content, "ref_invalid_url", "❌ That doesn’t look like a valid URL. Please paste a link starting with https://"),
+                reply_markup=build_main_menu(content),
+            )
+            return
+
+        context.user_data["temp_step1_url"] = msg
+        context.user_data["awaiting_step1_url"] = False
+        context.user_data["awaiting_step2_url"] = True
+
+        await update.message.reply_text(
+            ui_get(content, "ref_set_step2_prompt",
+                   "✅ Step 1 link saved.\n\nNow paste your full Step 2 (Become an Affiliate) referral URL:"),
+            reply_markup=build_main_menu(content),
+        )
+        return
+
+    if context.user_data.get("awaiting_step2_url") is True:
+        if not looks_like_url(msg):
+            await update.message.reply_text(
+                ui_get(content, "ref_invalid_url", "❌ That doesn’t look like a valid URL. Please paste a link starting with https://"),
+                reply_markup=build_main_menu(content),
+            )
+            return
+
+        step1_url = (context.user_data.get("temp_step1_url") or "").strip()
+        step2_url = msg
+
+        if not step1_url:
+            # safety: restart the flow
+            context.user_data["awaiting_step2_url"] = False
+            await update.message.reply_text(
+                ui_get(content, "ref_flow_error",
+                       "Something went wrong saving Step 1. Please tap “Set Referral Links” again."),
+                reply_markup=build_main_menu(content),
+            )
+            return
+
+        ref = upsert_referrer(user_id, step1_url=step1_url, step2_url=step2_url)
+
+        # clear temp state
+        context.user_data["temp_step1_url"] = ""
+        context.user_data["awaiting_step2_url"] = False
+
+        invite = build_invite_link(ref["ref_code"])
+        done_text = ui_get(content, "ref_saved_done",
+                           "✅ Saved!\n\nYour personal invite link is:\n{invite}\n\nSend this link to prospects. When they open it, the bot will show *your* Step 1 and Step 2 links in the Join menu.")
+        done_text = done_text.replace("{invite}", invite)
+
+        await update.message.reply_text(done_text, reply_markup=build_main_menu(content))
+        return
+
+    # FAQ normal behavior
+    faq_items = flatten_faq_topics(content.get("faq_topics", []))
     if not faq_items:
         await update.message.reply_text(
             ui_get(content, "no_faq", "No FAQs configured yet. Use /start to see the menu."),
@@ -646,6 +1008,8 @@ def main() -> None:
     token = (os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip()
     if not token:
         raise RuntimeError("Missing TELEGRAM_BOT_TOKEN env var")
+
+    db_init()
 
     app = Application.builder().token(token).build()
 
