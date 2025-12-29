@@ -76,6 +76,8 @@ def ui_get(content: Dict[str, Any], key: str, fallback: str) -> str:
 def build_main_menu(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     keyboard = [
         [InlineKeyboardButton(ui_get(content, "menu_language", "🌍 Language"), callback_data="menu:language")],
+        # NEW: What is Pandora AI? button between Language and Presentations
+        [InlineKeyboardButton(ui_get(content, "menu_about", "❓ What is Pandora AI?"), callback_data="menu:about")],
         [InlineKeyboardButton(ui_get(content, "menu_presentations", "🎥 Presentations"), callback_data="menu:presentations")],
         [InlineKeyboardButton(ui_get(content, "menu_join", "🤝 How to Join"), callback_data="menu:join")],
         [InlineKeyboardButton(ui_get(content, "menu_corporate", "🏢 Corporate Info"), callback_data="menu:corporate")],
@@ -114,6 +116,19 @@ def links_list_kb(content: Dict[str, Any], items: List[Dict[str, str]], back_tar
     return InlineKeyboardMarkup(keyboard)
 
 
+def about_kb(content: Dict[str, Any], url: str) -> InlineKeyboardMarkup:
+    """
+    Button layout for the What is Pandora AI screen:
+    - Watch presentation (URL button)
+    - Back to menu
+    """
+    watch_label = ui_get(content, "about_watch_btn", "🎥 Watch the short presentation")
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(watch_label, url=url)],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
 # -----------------------------
 # Language Menu
 # -----------------------------
@@ -127,7 +142,6 @@ def language_kb(all_content: Dict[str, Any], active_lang: str) -> InlineKeyboard
             prefix = "✅ " if lang_code == active_lang else ""
             rows.append([InlineKeyboardButton(f"{prefix}{label}", callback_data=f"lang:set:{lang_code}")])
 
-    # after language selection screen, user can return to menu (if they already had language)
     rows.append([InlineKeyboardButton("⬅️", callback_data="menu:home")])
     return InlineKeyboardMarkup(rows)
 
@@ -215,14 +229,12 @@ async def safe_show_menu_message(
 # -----------------------------
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
-    NEW BEHAVIOR:
     - If user has NOT selected a language yet: show Language selector FIRST.
     - If user has selected a language: show normal welcome + main menu in that language.
     """
     all_content = load_all_content()
 
     if not user_has_selected_lang(context, all_content):
-        # show language selector first (using default language strings for the title)
         default_lang = get_default_lang(all_content)
         default_block = all_content.get("languages", {}).get(default_lang, {})
         title = ui_get(default_block, "language_title", "🌍 Language\n\nChoose your language:")
@@ -264,7 +276,6 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     if action == "home":
         context.user_data["faq_search_mode"] = False
 
-        # If they still haven't chosen a language, show language selector first
         if not user_has_selected_lang(context, all_content):
             default_lang = get_default_lang(all_content)
             default_block = all_content.get("languages", {}).get(default_lang, {})
@@ -284,6 +295,24 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         active_lang = get_lang_from_user(context, all_content)
         title = ui_get(content, "language_title", "🌍 Language\n\nChoose your language:")
         await safe_show_menu_message(query, context, title, language_kb(all_content, active_lang))
+        return
+
+    # NEW: What is Pandora AI?
+    if action == "about":
+        about_text = (content.get("about_text") or "").strip()
+        about_url = (content.get("about_url") or "").strip()
+
+        if not about_text:
+            about_text = ui_get(content, "about_fallback", "Pandora AI overview is not configured yet.")
+        if not about_url:
+            about_url = "https://www.youtube.com/"
+
+        await safe_show_menu_message(
+            query,
+            context,
+            about_text,
+            about_kb(content, about_url),
+        )
         return
 
     if action == "presentations":
@@ -381,7 +410,6 @@ async def on_language_click(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         if isinstance(languages, dict) and lang_code in languages:
             context.user_data["lang"] = lang_code
 
-    # show home in the newly-selected language
     content = get_active_content(context, all_content)
     context.user_data["faq_search_mode"] = False
     await safe_show_menu_message(
