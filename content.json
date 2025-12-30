@@ -12,7 +12,7 @@
         "menu_disclaimer": "⚠️ Disclaimer",
         "menu_language": "🌍 Language",
         "menu_about": "❓ What is Pandora AI?",
-        "about_watch_btn": "🎥 Watch the short presentation",
+        "about_watch_btn": "🎥 Watch the 15m presentation",
         "back_to_menu": "⬅️ Back to menu",
         "back": "⬅️ Back",
         "home": "🏠 Home",
@@ -54,8 +54,8 @@
         "join_step1_confirmed": "✅ Step 1 confirmed.\n\nYou can now continue to Step 2 if you want to become an affiliate.\n\n🚨 WARNING 🚨\nIf you have hit the \"I have completed Step 1\" button in order to complete Step 2 – Become an affiliate when you haven't actually registered a trading account, you will simply not receive any affiliate commissions.\n\nPlease ensure you register and purchase your trading account from Step 1 first.",
         "join_no_sponsor": "⚠️ I can’t see a sponsor link.\n\nPlease ask the person who sent you this bot for their personal invite link.\n\nYou can still open the Step 1 setup document below.",
         "join_no_sponsor_step2": "⚠️ I can’t see a sponsor affiliate link.\n\nPlease ask your sponsor for their affiliate link.\n\nYou can still open the Step 2 document below.",
-        "ref_set_step1_prompt": "🔗 Set your referral links\n\nPlease paste your full Step 1 (Register & Trade) referral URL now:",
-        "ref_set_step2_prompt": "✅ Step 1 link saved.\n\nNow paste your full Step 2 (Become an Affiliate) referral URL:",
+        "ref_set_step1_prompt": "🔗 Set your referral links\n\nPlease paste your full Step 1 (Register & Trade) referral URL below and click send now:",
+        "ref_set_step2_prompt": "✅ Step 1 link saved.\n\nPlease paste your full Step 2 (Become an Affiliate) referral URL below and click send now:",
         "ref_invalid_url": "❌ That doesn’t look like a valid URL. Please paste a link starting with https://",
         "ref_flow_error": "Something went wrong saving Step 1. Please tap “Set Referral Links” again.",
         "ref_saved_done": "✅ Saved!\n\nYour personal invite link is:\n{invite}\n\nSend this link to prospects. When they open it, the bot will show *your* Step 1 and Step 2 links in the Join menu.",
@@ -69,7 +69,8 @@
         "ref_ready_no": "❌ No",
         "ref_links_help_text": "No problem — open the guide below to see where to find your Step 1 and Step 2 referral links.\n\nWhen you have them, tap “I have my links now”.",
         "ref_links_help_btn": "📄 How to find my referral links",
-        "ref_links_have_now_btn": "✅ I have my links now"
+        "ref_links_have_now_btn": "✅ I have my links now",
+        "about_watch_90_btn": "🎥 Watch the 90 second intro"
       },
       "welcome_message": "Welcome to the Pandora AI community Bot 😊. Please select from the below menu so I can do my best to assist you",
       "about_text": "❓ What is Pandora AI?\n\nPandora AI has been built as a community-driven project, connecting everyday individuals with a regulated broker, automated trading strategies and passive commission structures without needing experience.\n\nHere’s what makes it accessible:\n- 100% automated copy trading\n- No trading knowledge required\n- You control your own broker account\n- Pandora AI never holds or handles any client funds\n- You can deposit, withdraw profits, or stop anytime\n\nAnd most importantly: Axis offers all Pandora AI members access to 10X instant funded accounts, meaning your deposit becomes a larger trading balance. Still under your full control.\nThis structure is a game-changer for people who want exposure without needing large starting capital.\n\nPandora AI integrates multiple strategy styles, including human and algorithmic trading all curated for low drawdown and high consistency. There are three currently recommended strategies. Dynamics, Samurai and The Secret.\n\nThink of it as trading with more weight, without needing more personal capital.\n\nTo find out more detail watch this short presentation or use the other menu items as you need.",
@@ -248,7 +249,8 @@
         }
       ],
       "official_channel_url": "https://t.me/Pandora_AI_info",
-      "ref_links_help_doc_url": "https://drive.google.com/file/d/1h_byc_zwUObYR3CHMxHQS55VvTGedgS-/view"
+      "ref_links_help_doc_url": "https://drive.google.com/file/d/1h_byc_zwUObYR3CHMxHQS55VvTGedgS-/view",
+      "about_90_url": "https://drive.google.com/file/d/1LsJMvWe9wtf0uYJmqGyNhwjhMzM4dLYC/view"
     },
     "de": {
       "language_label": "Deutsch",
@@ -261,7 +263,7 @@
         "menu_disclaimer": "⚠️ Haftungsausschluss",
         "menu_language": "🌍 Sprache",
         "menu_about": "❓ Was ist Pandora AI?",
-        "about_watch_btn": "🎥 Kurze Präsentation ansehen",
+        "about_watch_btn": "🎥 15‑Minuten‑Präsentation ansehen",
         "back_to_menu": "⬅️ Zurück zum Menü",
         "back": "⬅️ Zurück",
         "home": "🏠 Start",
@@ -303,8 +305,8 @@
         "join_step1_confirmed": "✅ Schritt 1 bestätigt.\n\nDu kannst jetzt mit Schritt 2 fortfahren, wenn du Affiliate werden möchtest.\n\n🚨 WARNUNG 🚨\nWenn du den Button „Ich habe Schritt 1 abgeschlossen“ nur gedrückt hast, um Schritt 2 – Affiliate werden – zu starten, ohne tatsächlich ein Trading-Konto registriert und gekauft zu haben, erhältst du keine Affiliate-Provisionen.\n\nBitte stelle sicher, dass du dein Trading-Konto in Schritt 1 zuerst registrierst und kaufst.",
         "join_no_sponsor": "⚠️ Ich sehe keinen Sponsor-Link.\n\nBitte frage die Person, die dir diesen Bot geschickt hat, nach ihrem persönlichen Einladungslink.\n\nDu kannst trotzdem unten das Schritt-1-Dokument öffnen.",
         "join_no_sponsor_step2": "⚠️ Ich sehe keinen Sponsor-Affiliate-Link.\n\nBitte frage deinen Sponsor nach seinem Affiliate-Link.\n\nDu kannst trotzdem unten das Schritt-2-Dokument öffnen.",
-        "ref_set_step1_prompt": "🔗 Referral-Links speichern\n\nBitte sende jetzt deinen vollständigen Schritt-1-Referral-Link (Registrieren & Traden):",
-        "ref_set_step2_prompt": "✅ Schritt-1-Link gespeichert.\n\nSende jetzt deinen vollständigen Schritt-2-Referral-Link (Affiliate werden):",
+        "ref_set_step1_prompt": "🔗 Referral-Links speichern\n\nBitte füge deinen vollständigen Schritt-1-Referral-Link (Registrieren & Traden) unten ein und klicke jetzt auf Senden:",
+        "ref_set_step2_prompt": "✅ Schritt-1-Link gespeichert.\n\nBitte füge deinen vollständigen Schritt-2-Referral-Link (Affiliate werden) unten ein und klicke jetzt auf Senden:",
         "ref_invalid_url": "❌ Das sieht nicht wie eine gültige URL aus. Bitte sende einen Link, der mit https:// beginnt.",
         "ref_flow_error": "Beim Speichern von Schritt 1 ist etwas schiefgelaufen. Bitte tippe erneut auf „Referral-Links speichern“.",
         "ref_saved_done": "✅ Gespeichert!\n\nDein persönlicher Einladungslink ist:\n{invite}\n\nSende diesen Link an Interessenten. Wenn sie ihn öffnen, zeigt der Bot automatisch *deine* Schritt-1- und Schritt-2-Links im Join-Menü an.",
@@ -318,7 +320,8 @@
         "ref_ready_no": "❌ Nein",
         "ref_links_help_text": "Kein Problem — öffne die Anleitung unten, um zu sehen, wo du deine Schritt-1- und Schritt-2-Referral-Links findest.\n\nWenn du sie hast, tippe auf „Ich habe meine Links jetzt“.",
         "ref_links_help_btn": "📄 Wo finde ich meine Referral-Links?",
-        "ref_links_have_now_btn": "✅ Ich habe meine Links jetzt"
+        "ref_links_have_now_btn": "✅ Ich habe meine Links jetzt",
+        "about_watch_90_btn": "🎥 90‑Sekunden‑Intro ansehen"
       },
       "welcome_message": "Willkommen beim Pandora AI Community Bot 😊. Bitte wähle unten im Menü eine Option aus, damit ich dir bestmöglich helfen kann.",
       "about_text": "❓ Was ist Pandora AI?\n\nPandora AI wurde als Community-getriebenes Projekt aufgebaut und verbindet ganz normale Menschen mit einem regulierten Broker, automatisierten Trading-Strategien und passiven Provisionsstrukturen – ganz ohne Vorerfahrung.\n\nWarum es so zugänglich ist:\n- 100% automatisiertes Copytrading\n- Kein Trading-Wissen erforderlich\n- Du kontrollierst dein eigenes Broker-Konto\n- Pandora AI hält oder verwaltet niemals Kundengelder\n- Du kannst jederzeit einzahlen, Gewinne auszahlen oder stoppen\n\nUnd das Wichtigste: Axis bietet allen Pandora AI Mitgliedern Zugang zu 10X Instant-Funded-Konten – das bedeutet, deine Einzahlung wird zu einem größeren Trading-Balance (weiterhin vollständig unter deiner Kontrolle).\nDiese Struktur ist ein Game-Changer für Menschen, die Exposure möchten, ohne viel Startkapital zu benötigen.\n\nPandora AI integriert mehrere Strategiestile, inklusive menschlichem und algorithmischem Trading – kuratiert für niedrigen Drawdown und hohe Konstanz. Aktuell werden drei Strategien empfohlen: Dynamics, Samurai und The Secret.\n\nStell es dir vor wie Trading mit mehr Gewicht, ohne mehr eigenes Kapital einsetzen zu müssen.\n\nFür mehr Details sieh dir diese kurze Präsentation an oder nutze die anderen Menüpunkte, je nachdem was du brauchst.",
@@ -371,7 +374,8 @@
         }
       ],
       "official_channel_url": "https://t.me/Pandora_AI_info",
-      "ref_links_help_doc_url": "https://drive.google.com/file/d/1TVxPHANlmc9Ojaei9pkKHPdk9tKCDFK4/view"
+      "ref_links_help_doc_url": "https://drive.google.com/file/d/1TVxPHANlmc9Ojaei9pkKHPdk9tKCDFK4/view",
+      "about_90_url": "https://drive.google.com/file/d/1LiXOVmaB_lQKHwN1VL39hfjilrYuZrsF/view"
     }
   }
 }
