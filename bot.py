@@ -467,17 +467,12 @@ async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(
             ui_get(
                 content,
-                "reset_confirm_prompt",
-                "🔄 Reset test data
+                "reset_confirm_prompt", """🔄 Reset test data
 
-"
-                "This will clear ONLY your personal bot data (sponsor link + Step 1/2 confirmations) so you can retest someone else’s invite link.
+This will clear ONLY your personal bot data (sponsor link + Step 1/2 confirmations) so you can retest someone else’s invite link.
 
-"
-                "To confirm, type:
-"
-                "/reset confirm"
-            ),
+To confirm, type:
+/reset confirm"""),
             reply_markup=build_main_menu(content),
         )
         return
@@ -501,12 +496,9 @@ async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
         ui_get(
             content,
-            "reset_done",
-            "✅ Your bot data has been reset.
+            "reset_done", """✅ Your bot data has been reset.
 
-"
-            "Now open the new invite link you want to test, or type /start."
-        ),
+Now open the new invite link you want to test, or type /start.""" ),
         reply_markup=build_main_menu(content),
     )
 
