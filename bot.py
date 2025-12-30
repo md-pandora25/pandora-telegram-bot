@@ -261,15 +261,29 @@ def build_invite_link(ref_code: str) -> str:
 
 
 def build_main_menu(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    # Order requested:
+    # What is Pandora AI
+    # Presentations
+    # How to Join
+    # Corporate Info
+    # FAQ
+    # Set Referral links
+    # Share My Invite Link
+    # Language
+    # Official Telegram Channel
+    # Support
+    # Disclaimer
+    official_url = (content.get("official_channel_url") or "https://t.me/Pandora_AI_info").strip()
     keyboard = [
-        [InlineKeyboardButton(ui_get(content, "menu_language", "🌍 Language"), callback_data="menu:language")],
-        [InlineKeyboardButton(ui_get(content, "menu_set_links", "🔗 Set Referral Links"), callback_data="menu:set_links")],
-        [InlineKeyboardButton(ui_get(content, "menu_share_invite", "📩 Share My Invite Link"), callback_data="menu:share_invite")],
         [InlineKeyboardButton(ui_get(content, "menu_about", "❓ What is Pandora AI?"), callback_data="menu:about")],
         [InlineKeyboardButton(ui_get(content, "menu_presentations", "🎥 Presentations"), callback_data="menu:presentations")],
         [InlineKeyboardButton(ui_get(content, "menu_join", "🤝 How to Join"), callback_data="menu:join")],
         [InlineKeyboardButton(ui_get(content, "menu_corporate", "🏢 Corporate Info"), callback_data="menu:corporate")],
         [InlineKeyboardButton(ui_get(content, "menu_faq", "📌 FAQ"), callback_data="menu:faq")],
+        [InlineKeyboardButton(ui_get(content, "menu_set_links", "🔗 Set Referral Links"), callback_data="menu:set_links")],
+        [InlineKeyboardButton(ui_get(content, "menu_share_invite", "📩 Share My Invite Link"), callback_data="menu:share_invite")],
+        [InlineKeyboardButton(ui_get(content, "menu_language", "🌍 Language"), callback_data="menu:language")],
+        [InlineKeyboardButton(ui_get(content, "menu_official_channel", "👉🏼 Official Telegram Channel"), url=official_url)],
         [InlineKeyboardButton(ui_get(content, "menu_support", "🧑‍💻 Support"), callback_data="menu:support")],
         [InlineKeyboardButton(ui_get(content, "menu_disclaimer", "⚠️ Disclaimer"), callback_data="menu:disclaimer")],
     ]
@@ -290,6 +304,16 @@ def links_list_kb(content: Dict[str, Any], items: List[Dict[str, str]], back_tar
     keyboard.append([InlineKeyboardButton(ui_get(content, "back", "⬅️ Back"), callback_data=f"menu:{back_target}")])
     keyboard.append([InlineKeyboardButton(ui_get(content, "home", "🏠 Home"), callback_data="menu:home")])
     return InlineKeyboardMarkup(keyboard)
+
+
+
+def ref_links_help_kb(content: Dict[str, Any], help_url: str) -> InlineKeyboardMarkup:
+    rows: List[List[InlineKeyboardButton]] = []
+    if help_url:
+        rows.append([InlineKeyboardButton(ui_get(content, "ref_links_help_btn", "📄 How to find my referral links"), url=help_url)])
+    rows.append([InlineKeyboardButton(ui_get(content, "ref_links_have_now_btn", "✅ I have my links now"), callback_data="ref:have_now")])
+    rows.append([InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")])
+    return InlineKeyboardMarkup(rows)
 
 
 def about_kb(content: Dict[str, Any], url: str) -> InlineKeyboardMarkup:
@@ -531,9 +555,20 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     if action == "set_links":
-        context.user_data["awaiting_step1_url"] = True
+        # Ask a confirmation question before starting link capture
+        context.user_data["awaiting_step1_url"] = False
         context.user_data["awaiting_step2_url"] = False
-        await safe_show_menu_message(query, context, ui_get(content, "ref_set_step1_prompt", "Paste Step 1 URL:"), back_to_menu_kb(content))
+        context.user_data["temp_step1_url"] = ""
+
+        question = ui_get(content, "ref_ready_question", "Do you have your Step 1 and Step 2 referral links ready to go?")
+        kb = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(ui_get(content, "ref_ready_yes", "✅ Yes"), callback_data="ref:ready:yes"),
+                InlineKeyboardButton(ui_get(content, "ref_ready_no", "❌ No"), callback_data="ref:ready:no"),
+            ],
+            [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")],
+        ])
+        await safe_show_menu_message(query, context, question, kb)
         return
 
     if action == "share_invite":
@@ -604,6 +639,41 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), build_main_menu(content))
+
+
+
+async def on_ref_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+
+    db_init()
+    all_content = load_all_content()
+    content = get_active_content(context, all_content)
+
+    data = query.data or ""
+
+    if data == "ref:ready:yes" or data == "ref:have_now":
+        context.user_data["awaiting_step1_url"] = True
+        context.user_data["awaiting_step2_url"] = False
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "ref_set_step1_prompt", "🔗 Set your referral links\n\nPlease paste your full Step 1 (Register & Trade) referral URL now:"),
+            back_to_menu_kb(content),
+        )
+        return
+
+    if data == "ref:ready:no":
+        help_url = (content.get("ref_links_help_doc_url") or "").strip()
+        help_text = ui_get(
+            content,
+            "ref_links_help_text",
+            "No problem — open the guide below to see where to find your Step 1 and Step 2 referral links.\n\nWhen you have them, tap “I have my links now”.",
+        )
+        await safe_show_menu_message(query, context, help_text, ref_links_help_kb(content, help_url))
+        return
+
+    await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), back_to_menu_kb(content))
 
 
 async def on_language_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -876,6 +946,8 @@ def main() -> None:
     app.add_handler(CommandHandler("reset", reset_cmd))
 
     app.add_handler(CallbackQueryHandler(on_menu_click, pattern=r"^menu:"))
+
+    app.add_handler(CallbackQueryHandler(on_ref_click, pattern=r"^ref:"))
     app.add_handler(CallbackQueryHandler(on_language_click, pattern=r"^lang:set:"))
     app.add_handler(CallbackQueryHandler(on_join_click, pattern=r"^join:"))
     app.add_handler(CallbackQueryHandler(on_faq_click, pattern=r"^(faq_topic:|faq_q:|faq_back_|faq_search:)"))
