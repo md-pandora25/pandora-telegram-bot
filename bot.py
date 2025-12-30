@@ -317,11 +317,18 @@ def ref_links_help_kb(content: Dict[str, Any], help_url: str) -> InlineKeyboardM
 
 
 def about_kb(content: Dict[str, Any], url: str) -> InlineKeyboardMarkup:
-    watch_label = ui_get(content, "about_watch_btn", "🎥 Watch the short presentation")
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(watch_label, url=url)],
-        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
-    ])
+    # Adds a short (90s) intro button above the main presentation button
+    watch_90_label = ui_get(content, "about_watch_90_btn", "🎥 Watch the 90 second intro")
+    watch_15_label = ui_get(content, "about_watch_btn", "🎥 Watch the 15m presentation")
+    url_90 = (content.get("about_90_url") or "").strip()
+
+    rows: List[List[InlineKeyboardButton]] = []
+    if url_90:
+        rows.append([InlineKeyboardButton(watch_90_label, url=url_90)])
+
+    rows.append([InlineKeyboardButton(watch_15_label, url=url)])
+    rows.append([InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")])
+    return InlineKeyboardMarkup(rows)
 
 
 def join_home_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
