@@ -448,6 +448,69 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(ui_get(content, "help_text", "Use /start to open the menu."), reply_markup=build_main_menu(content))
 
 
+# -----------------------------
+# Reset (safe user-only reset)
+# Usage:
+#   /reset           -> shows confirmation instruction
+#   /reset confirm   -> clears ONLY your own bot state (sponsor, step confirmations, in-memory flags)
+# Optional: set env RESET_REQUIRE_CONFIRM=false to allow /reset without 'confirm'
+# -----------------------------
+async def reset_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    db_init()
+    all_content = load_all_content()
+    content = get_active_content(context, all_content)
+
+    require_confirm = (os.environ.get("RESET_REQUIRE_CONFIRM", "true").strip().lower() != "false")
+    args = context.args or []
+
+    if require_confirm and (len(args) == 0 or (args[0].lower() != "confirm")):
+        await update.message.reply_text(
+            ui_get(
+                content,
+                "reset_confirm_prompt",
+                "🔄 Reset test data
+
+"
+                "This will clear ONLY your personal bot data (sponsor link + Step 1/2 confirmations) so you can retest someone else’s invite link.
+
+"
+                "To confirm, type:
+"
+                "/reset confirm"
+            ),
+            reply_markup=build_main_menu(content),
+        )
+        return
+
+    user_id = update.effective_user.id if update.effective_user else None
+    if user_id is None:
+        await update.message.reply_text(
+            ui_get(content, "reset_error", "Sorry — I couldn’t identify your user account."),
+            reply_markup=build_main_menu(content),
+        )
+        return
+
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM users WHERE telegram_user_id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
+    context.user_data.clear()
+
+    await update.message.reply_text(
+        ui_get(
+            content,
+            "reset_done",
+            "✅ Your bot data has been reset.
+
+"
+            "Now open the new invite link you want to test, or type /start."
+        ),
+        reply_markup=build_main_menu(content),
+    )
+
+
 async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -817,6 +880,8 @@ def main() -> None:
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
+
+    app.add_handler(CommandHandler("reset", reset_cmd))
 
     app.add_handler(CallbackQueryHandler(on_menu_click, pattern=r"^menu:"))
     app.add_handler(CallbackQueryHandler(on_language_click, pattern=r"^lang:set:"))
