@@ -251,6 +251,14 @@ def upsert_referrer(owner_telegram_id: int, step1_url: str, step2_url: str) -> D
 def looks_like_url(text: str) -> bool:
     return bool(re.match(r"^https?://", (text or "").strip(), flags=re.IGNORECASE))
 
+from urllib.parse import urlparse
+
+def url_domain_contains(url: str, domain: str) -> bool:
+    try:
+        return domain.lower() in urlparse((url or "").strip()).netloc.lower()
+    except Exception:
+        return False
+
 
 def get_bot_username() -> str:
     return (os.environ.get("BOT_USERNAME") or BOT_USERNAME_DEFAULT).strip()
@@ -321,6 +329,16 @@ def about_kb(content: Dict[str, Any], url: str) -> InlineKeyboardMarkup:
     watch_90_label = ui_get(content, "about_watch_90_btn", "🎥 Watch the 90 second intro")
     watch_15_label = ui_get(content, "about_watch_btn", "🎥 Watch the 15m presentation")
     url_90 = (content.get("about_90_url") or "").strip()
+
+
+def ref_invalid_link_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    help_url = (content.get("ref_links_help_doc_url") or "").strip()
+    rows: List[List[InlineKeyboardButton]] = []
+    if help_url:
+        rows.append([InlineKeyboardButton(ui_get(content, "ref_links_help_btn", "📄 How to find my referral links"), url=help_url)])
+    rows.append([InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")])
+    return InlineKeyboardMarkup(rows)
+
 
     rows: List[List[InlineKeyboardButton]] = []
     if url_90:
@@ -566,6 +584,7 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         context.user_data["awaiting_step1_url"] = False
         context.user_data["awaiting_step2_url"] = False
         context.user_data["temp_step1_url"] = ""
+        context.user_data["temp_step2_url"] = ""
 
         question = ui_get(content, "ref_ready_question", "Do you have your Step 1 and Step 2 referral links ready to go?")
         kb = InlineKeyboardMarkup([
@@ -662,6 +681,8 @@ async def on_ref_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if data == "ref:ready:yes" or data == "ref:have_now":
         context.user_data["awaiting_step1_url"] = True
         context.user_data["awaiting_step2_url"] = False
+        context.user_data["temp_step1_url"] = ""
+        context.user_data["temp_step2_url"] = ""
         await safe_show_menu_message(
             query,
             context,
@@ -879,6 +900,62 @@ async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         if not looks_like_url(msg):
             await update.message.reply_text(ui_get(content, "ref_invalid_url", "Invalid URL."), reply_markup=build_main_menu(content))
             return
+
+        msg_l = msg.lower()
+        is_step1 = ("pandora" in msg_l) and url_domain_contains(msg, "axisfunded.com")
+        is_step2 = ("axisfundedaffiliates" in msg_l) and url_domain_contains(msg, "axisfunded.com")
+
+        if (not is_step1) and is_step2:
+            context.user_data["temp_step2_url"] = msg
+            await update.message.reply_text(
+                ui_get(content, "ref_detected_step2_first", "⚠️ I think you pasted your Step 2 link first."),
+                reply_markup=build_main_menu(content),
+            )
+            return
+
+        if not is_step1:
+            await update.message.reply_text(
+                ui_get(content, "ref_invalid_step1_text", "❌ Invalid Step 1 link. Please paste again."),
+                reply_markup=ref_invalid_link_kb(content),
+            )
+            return
+
+        context.user_data["temp_step1_url"] = msg
+        context.user_data["awaiting_step1_url"] = False
+
+        pre_step2 = (context.user_data.get("temp_step2_url") or "").strip()
+        if pre_step2 and user_id is not None:
+            ref = upsert_referrer(user_id, step1_url=msg, step2_url=pre_step2)
+            context.user_data["temp_step1_url"] = ""
+            context.user_data["temp_step2_url"] = ""
+            context.user_data["awaiting_step2_url"] = False
+            invite = build_invite_link(ref["ref_code"])
+            done_tpl = ui_get(content, "ref_saved_done", "✅ Saved! {invite}")
+            done_text = done_tpl.replace("{invite}", invite)
+            await update.message.reply_text(done_text, reply_markup=build_main_menu(content))
+            return
+
+        context.user_data["awaiting_step2_url"] = True
+        await update.message.reply_text(ui_get(content, "ref_set_step2_prompt", "Now paste Step 2 URL:"), reply_markup=build_main_menu(content))
+        return
+
+        # Step 1 validation: must be axisfunded.com and contain 'pandora' (case-insensitive)
+        if (("pandora" not in msg.lower()) or (not url_domain_contains(msg, "axisfunded.com"))):
+            await update.message.reply_text(
+                ui_get(content, "ref_invalid_step1_text",
+                       "❌ That doesn’t look like a valid Step 1 link.\n\n"
+                       "Your Step 1 link must be an axisfunded.com URL and contain the word “pandora”.\n\n"
+                       "Please double-check and paste it again below (then press Send)."),
+                reply_markup=ref_invalid_link_kb(content),
+            )
+            # Keep them in Step 1 capture mode
+            return
+
+        context.user_data["temp_step1_url"] = msg
+        context.user_data["awaiting_step1_url"] = False
+        context.user_data["awaiting_step2_url"] = True
+        await update.message.reply_text(ui_get(content, "ref_set_step2_prompt", "Now paste Step 2 URL:"), reply_markup=build_main_menu(content))
+        return
         context.user_data["temp_step1_url"] = msg
         context.user_data["awaiting_step1_url"] = False
         context.user_data["awaiting_step2_url"] = True
@@ -889,6 +966,54 @@ async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         if not looks_like_url(msg):
             await update.message.reply_text(ui_get(content, "ref_invalid_url", "Invalid URL."), reply_markup=build_main_menu(content))
             return
+
+        msg_l = msg.lower()
+        is_step1 = ("pandora" in msg_l) and url_domain_contains(msg, "axisfunded.com")
+        is_step2 = ("axisfundedaffiliates" in msg_l) and url_domain_contains(msg, "axisfunded.com")
+
+        if (not is_step2) and is_step1:
+            context.user_data["temp_step1_url"] = msg
+            await update.message.reply_text(
+                ui_get(content, "ref_detected_step1_in_step2", "⚠️ I think you pasted your Step 1 link here."),
+                reply_markup=build_main_menu(content),
+            )
+            return
+
+        if not is_step2:
+            await update.message.reply_text(
+                ui_get(content, "ref_invalid_step2_text", "❌ Invalid Step 2 link. Please paste again."),
+                reply_markup=ref_invalid_link_kb(content),
+            )
+            return
+
+        step1_url = (context.user_data.get("temp_step1_url") or "").strip()
+        if not step1_url or user_id is None:
+            context.user_data["awaiting_step2_url"] = False
+            await update.message.reply_text(ui_get(content, "ref_flow_error", "Flow error."), reply_markup=build_main_menu(content))
+            return
+
+        ref = upsert_referrer(user_id, step1_url=step1_url, step2_url=msg)
+        context.user_data["temp_step1_url"] = ""
+        context.user_data["temp_step2_url"] = ""
+        context.user_data["awaiting_step2_url"] = False
+        invite = build_invite_link(ref["ref_code"])
+        done_tpl = ui_get(content, "ref_saved_done", "✅ Saved! {invite}")
+        done_text = done_tpl.replace("{invite}", invite)
+        await update.message.reply_text(done_text, reply_markup=build_main_menu(content))
+        return
+
+        # Step 2 validation: must be axisfunded.com and contain 'axisfundedaffiliates' (case-insensitive)
+        if (("axisfundedaffiliates" not in msg.lower()) or (not url_domain_contains(msg, "axisfunded.com"))):
+            await update.message.reply_text(
+                ui_get(content, "ref_invalid_step2_text",
+                       "❌ That doesn’t look like a valid Step 2 link.\n\n"
+                       "Your Step 2 link must be an axisfunded.com URL and contain the word “axisfundedaffiliates”.\n\n"
+                       "Please double-check and paste it again below (then press Send)."),
+                reply_markup=ref_invalid_link_kb(content),
+            )
+            # Keep them in Step 2 capture mode
+            return
+
         step1_url = (context.user_data.get("temp_step1_url") or "").strip()
         if not step1_url or user_id is None:
             context.user_data["awaiting_step2_url"] = False
@@ -896,6 +1021,20 @@ async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             return
         ref = upsert_referrer(user_id, step1_url=step1_url, step2_url=msg)
         context.user_data["temp_step1_url"] = ""
+        context.user_data["temp_step2_url"] = ""
+        context.user_data["awaiting_step2_url"] = False
+        invite = build_invite_link(ref["ref_code"])
+        done_text = ui_get(content, "ref_saved_done", "Saved:\n{invite}").replace("{invite}", invite)
+        await update.message.reply_text(done_text, reply_markup=build_main_menu(content))
+        return
+        step1_url = (context.user_data.get("temp_step1_url") or "").strip()
+        if not step1_url or user_id is None:
+            context.user_data["awaiting_step2_url"] = False
+            await update.message.reply_text(ui_get(content, "ref_flow_error", "Flow error."), reply_markup=build_main_menu(content))
+            return
+        ref = upsert_referrer(user_id, step1_url=step1_url, step2_url=msg)
+        context.user_data["temp_step1_url"] = ""
+        context.user_data["temp_step2_url"] = ""
         context.user_data["awaiting_step2_url"] = False
         invite = build_invite_link(ref["ref_code"])
         done_text = ui_get(content, "ref_saved_done", "Saved:\n{invite}").replace("{invite}", invite)
