@@ -325,26 +325,32 @@ def ref_links_help_kb(content: Dict[str, Any], help_url: str) -> InlineKeyboardM
 
 
 def about_kb(content: Dict[str, Any], url: str) -> InlineKeyboardMarkup:
-    # Adds a short (90s) intro button above the main presentation button
+    """Keyboard for the 'What is Pandora AI?' section.
+
+    Shows (optional) 90s intro button first, then the main 15m presentation button,
+    then a back-to-menu button.
+    """
     watch_90_label = ui_get(content, "about_watch_90_btn", "🎥 Watch the 90 second intro")
     watch_15_label = ui_get(content, "about_watch_btn", "🎥 Watch the 15m presentation")
     url_90 = (content.get("about_90_url") or "").strip()
-
-
-def ref_invalid_link_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
-    help_url = (content.get("ref_links_help_doc_url") or "").strip()
-    rows: List[List[InlineKeyboardButton]] = []
-    if help_url:
-        rows.append([InlineKeyboardButton(ui_get(content, "ref_links_help_btn", "📄 How to find my referral links"), url=help_url)])
-    rows.append([InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")])
-    return InlineKeyboardMarkup(rows)
-
 
     rows: List[List[InlineKeyboardButton]] = []
     if url_90:
         rows.append([InlineKeyboardButton(watch_90_label, url=url_90)])
 
-    rows.append([InlineKeyboardButton(watch_15_label, url=url)])
+    if url:
+        rows.append([InlineKeyboardButton(watch_15_label, url=url)])
+
+    rows.append([InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")])
+    return InlineKeyboardMarkup(rows)
+
+
+def ref_invalid_link_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Shown when a user pastes an invalid referral URL."""
+    help_url = (content.get("ref_links_help_doc_url") or "").strip()
+    rows: List[List[InlineKeyboardButton]] = []
+    if help_url:
+        rows.append([InlineKeyboardButton(ui_get(content, "ref_links_help_btn", "📄 How to find my referral links"), url=help_url)])
     rows.append([InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")])
     return InlineKeyboardMarkup(rows)
 
