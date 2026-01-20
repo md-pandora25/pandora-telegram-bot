@@ -367,6 +367,14 @@ def my_invite_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     ])
 
 
+def check_ref_links_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Keyboard for Check My Referral Links screen with share button."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "share_invite_btn", "📤 Share My Invite Link"), callback_data="invite:share")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
 def about_kb(content: Dict[str, Any], url: str) -> InlineKeyboardMarkup:
     """Keyboard for the 'What is Pandora AI?' section.
 
@@ -797,7 +805,7 @@ async def on_invite_click(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         title = ui_get(content, "my_ref_links_title", "🔍 Your Referral Links")
         full_text = f"{title}\n\n{links_text}"
         
-        await safe_show_menu_message(query, context, full_text, back_to_menu_kb(content))
+        await safe_show_menu_message(query, context, full_text, check_ref_links_kb(content))
         return
 
     await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), back_to_menu_kb(content))
