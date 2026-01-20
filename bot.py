@@ -358,6 +358,15 @@ def ref_links_help_kb(content: Dict[str, Any], help_url: str) -> InlineKeyboardM
     return InlineKeyboardMarkup(rows)
 
 
+def my_invite_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Keyboard for My Invite Link submenu with two options."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "share_invite_btn", "📤 Share My Invite Link"), callback_data="invite:share")],
+        [InlineKeyboardButton(ui_get(content, "check_ref_links_btn", "🔍 Check My Referral Links"), callback_data="invite:check_links")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
 def about_kb(content: Dict[str, Any], url: str) -> InlineKeyboardMarkup:
     """Keyboard for the 'What is Pandora AI?' section.
 
@@ -647,9 +656,9 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         if not ref:
             await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
             return
-        invite = build_invite_link(ref["ref_code"], content)
-        share_text = ui_get(content, "ref_share_text", "Share your invite:\n\n{invite}").replace("{invite}", invite)
-        await safe_show_menu_message(query, context, share_text, back_to_menu_kb(content))
+        # Show submenu with two options
+        title = ui_get(content, "my_invite_title", "📩 My Invite Link\n\nChoose an option:")
+        await safe_show_menu_message(query, context, title, my_invite_kb(content))
         return
 
     if action == "about":
@@ -743,6 +752,52 @@ async def on_ref_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "No problem — open the guide below to see where to find your Step 1 and Step 2 referral links.\n\nWhen you have them, tap 'I have my links now'.",
         )
         await safe_show_menu_message(query, context, help_text, ref_links_help_kb(content, help_url))
+        return
+
+    await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), back_to_menu_kb(content))
+
+
+async def on_invite_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handler for My Invite Link submenu actions."""
+    query = update.callback_query
+    await query.answer()
+
+    db_init()
+    all_content = load_all_content()
+    content = get_active_content(context, all_content)
+
+    data = query.data or ""
+    user_id = query.from_user.id
+
+    # Get user's referral info
+    ref = get_referrer_by_owner(user_id)
+    if not ref:
+        await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
+        return
+
+    if data == "invite:share":
+        # Share invite link (original functionality)
+        invite = build_invite_link(ref["ref_code"], content)
+        share_text = ui_get(content, "ref_share_text", "Share your invite:\n\n{invite}").replace("{invite}", invite)
+        await safe_show_menu_message(query, context, share_text, back_to_menu_kb(content))
+        return
+
+    if data == "invite:check_links":
+        # Show user's saved referral links
+        step1_url = ref.get("step1_url", "Not set")
+        step2_url = ref.get("step2_url", "Not set")
+        
+        links_template = ui_get(
+            content, 
+            "my_ref_links_text", 
+            "📋 Here are your saved referral links:\n\n🔗 Step 1:\n{step1}\n\n🔗 Step 2:\n{step2}"
+        )
+        links_text = links_template.replace("{step1}", step1_url).replace("{step2}", step2_url)
+        
+        title = ui_get(content, "my_ref_links_title", "🔍 Your Referral Links")
+        full_text = f"{title}\n\n{links_text}"
+        
+        await safe_show_menu_message(query, context, full_text, back_to_menu_kb(content))
         return
 
     await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), back_to_menu_kb(content))
@@ -1105,6 +1160,7 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(on_menu_click, pattern=r"^menu:"))
 
     app.add_handler(CallbackQueryHandler(on_ref_click, pattern=r"^ref:"))
+    app.add_handler(CallbackQueryHandler(on_invite_click, pattern=r"^invite:"))
     app.add_handler(CallbackQueryHandler(on_language_click, pattern=r"^lang:set:"))
     app.add_handler(CallbackQueryHandler(on_join_click, pattern=r"^join:"))
     app.add_handler(CallbackQueryHandler(on_faq_click, pattern=r"^(faq_topic:|faq_q:|faq_back_|faq_search:)"))
