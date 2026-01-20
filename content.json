@@ -81,7 +81,10 @@
         "share_invite_btn": "📤 Share My Invite Link",
         "check_ref_links_btn": "🔍 Check My Referral Links",
         "my_ref_links_title": "🔍 Your Referral Links",
-        "my_ref_links_text": "📋 Here are your saved referral links:\n\n🔗 Step 1 (Register & Trade):\n{step1}\n\n🔗 Step 2 (Become an Affiliate):\n{step2}"
+        "my_ref_links_text": "📋 Here are your saved referral links:\n\n🔗 Step 1 (Register & Trade):\n{step1}\n\n🔗 Step 2 (Become an Affiliate):\n{step2}",
+        "update_notification_title": "🎉 Bot Updated!",
+        "update_notification_text": "Great news! The Pandora AI FAQ Bot has been updated with new features to help you get started faster and find answers easier.\n\n**What's New:**\n✨ New \"How To Guides\" section in FAQ with step-by-step guides\n📚 Easy access to KYC, strategy switching, referral links, and trade checking guides\n🔍 Check your saved referral links anytime from My Invite Link menu\n📋 All guides available in your language with direct links to documentation\n\nEverything you've set up (referral links, settings) is preserved and working perfectly.",
+        "update_notification_cta": "\n\nTap /start if you experience any issues or want to explore the new features!"
       },
       "welcome_message": "Welcome to the Pandora AI community Bot 😊. Please select from the below menu so I can do my best to assist you",
       "about_text": "❓ What is Pandora AI?\n\nPandora AI has been built as a community-driven project, connecting everyday individuals with a regulated broker, automated trading strategies and passive commission structures without needing experience.\n\nHere’s what makes it accessible:\n- 100% automated copy trading\n- No trading knowledge required\n- You control your own broker account\n- Pandora AI never holds or handles any client funds\n- You can deposit, withdraw profits, or stop anytime\n\nAnd most importantly: Axis offers all Pandora AI members access to 10X instant funded accounts, meaning your deposit becomes a larger trading balance. Still under your full control.\nThis structure is a game-changer for people who want exposure without needing large starting capital.\n\nPandora AI integrates multiple strategy styles, including human and algorithmic trading all curated for low drawdown and high consistency. There are three currently recommended strategies. Dynamics, Samurai and The Secret.\n\nThink of it as trading with more weight, without needing more personal capital.\n\nTo find out more detail watch this short presentation or use the other menu items as you need.",
@@ -145,6 +148,11 @@
               "q": "How do I check my trades?",
               "a": "Click the link below to view the complete trade checking guide.",
               "link": "https://drive.google.com/file/d/1nGPHTZDYA5_dwbdpeeUiRtbOkfiQelQM/view?usp=sharing"
+            },
+            {
+              "q": "How do I Top-Up my account?",
+              "a": "Click the link below to view the complete account top-up guide.",
+              "link": "https://drive.google.com/file/d/1uPagbeAAsM8KJMi0hF6HxEn-B_rmQTn3/view?usp=sharing"
             }
           ]
         },
@@ -377,7 +385,10 @@
         "share_invite_btn": "📤 Meinen Einladungslink teilen",
         "check_ref_links_btn": "🔍 Meine Referral-Links prüfen",
         "my_ref_links_title": "🔍 Deine Referral-Links",
-        "my_ref_links_text": "📋 Hier sind deine gespeicherten Referral-Links:\n\n🔗 Schritt 1 (Registrieren & Traden):\n{step1}\n\n🔗 Schritt 2 (Affiliate werden):\n{step2}"
+        "my_ref_links_text": "📋 Hier sind deine gespeicherten Referral-Links:\n\n🔗 Schritt 1 (Registrieren & Traden):\n{step1}\n\n🔗 Schritt 2 (Affiliate werden):\n{step2}",
+        "update_notification_title": "🎉 Bot aktualisiert!",
+        "update_notification_text": "Gute Neuigkeiten! Der Pandora AI FAQ Bot wurde mit neuen Funktionen aktualisiert, damit du schneller starten und leichter Antworten finden kannst.\n\n**Was ist neu:**\n✨ Neuer Bereich \"Anleitungen\" in den FAQs mit Schritt-für-Schritt-Anleitungen\n📚 Einfacher Zugriff auf KYC, Strategiewechsel, Referral-Links und Trade-Überprüfungsanleitungen\n🔍 Prüfe deine gespeicherten Referral-Links jederzeit über das Menü \"Mein Einladungslink\"\n📋 Alle Anleitungen in deiner Sprache mit direkten Links zur Dokumentation\n\nAlles, was du eingerichtet hast (Referral-Links, Einstellungen), bleibt erhalten und funktioniert einwandfrei.",
+        "update_notification_cta": "\n\nTippe /start, wenn du Probleme hast oder die neuen Funktionen erkunden möchtest!"
       },
       "welcome_message": "Willkommen beim Pandora AI Community Bot 😊. Bitte wähle unten im Menü eine Option aus, damit ich dir bestmöglich helfen kann.",
       "about_text": "❓ Was ist Pandora AI?\n\nPandora AI wurde als Community-getriebenes Projekt aufgebaut und verbindet ganz normale Menschen mit einem regulierten Broker, automatisierten Trading-Strategien und passiven Provisionsstrukturen – ganz ohne Vorerfahrung.\n\nWarum es so zugänglich ist:\n- 100% automatisiertes Copytrading\n- Kein Trading-Wissen erforderlich\n- Du kontrollierst dein eigenes Broker-Konto\n- Pandora AI hält oder verwaltet niemals Kundengelder\n- Du kannst jederzeit einzahlen, Gewinne auszahlen oder stoppen\n\nUnd das Wichtigste: Axis bietet allen Pandora AI Mitgliedern Zugang zu 10X Instant-Funded-Konten – das bedeutet, deine Einzahlung wird zu einem größeren Trading-Balance (weiterhin vollständig unter deiner Kontrolle).\nDiese Struktur ist ein Game-Changer für Menschen, die Exposure möchten, ohne viel Startkapital zu benötigen.\n\nPandora AI integriert mehrere Strategiestile, inklusive menschlichem und algorithmischem Trading – kuratiert für niedrigen Drawdown und hohe Konstanz. Aktuell werden drei Strategien empfohlen: Dynamics, Samurai und The Secret.\n\nStell es dir vor wie Trading mit mehr Gewicht, ohne mehr eigenes Kapital einsetzen zu müssen.\n\nFür mehr Details sieh dir diese kurze Präsentation an oder nutze die anderen Menüpunkte, je nachdem was du brauchst.",
@@ -441,6 +452,11 @@
               "q": "Wie überprüfe ich meine Trades?",
               "a": "Klicke auf den Link unten, um die vollständige Anleitung zur Trade-Überprüfung anzuzeigen.",
               "link": "https://drive.google.com/file/d/1BhQGzDYAzrtYMIcloDuMdMs8JEPWlYlV/view?usp=sharing"
+            },
+            {
+              "q": "Wie lade ich mein Konto auf?",
+              "a": "Klicke auf den Link unten, um die vollständige Anleitung zum Aufladen des Kontos anzuzeigen.",
+              "link": "https://drive.google.com/file/d/1uPagbeAAsM8KJMi0hF6HxEn-B_rmQTn3/view?usp=sharing"
             }
           ]
         },
