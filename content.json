@@ -193,6 +193,14 @@
             {
               "q": "Can Pandora AI access my money?",
               "a": "No. Pandora strategies can trade on your account only via permissioned systems (such as copy trading setups). Withdrawals always remain under your control."
+            },
+            {
+              "q": "How long do withdrawals take?",
+              "a": "Terms and conditions state a withdrawal can take between 1 and 5 days. Axis endeavours to keep this under 24 hours, however this is not always possible depending on the time of day the request is made, or if the request is placed on a weekend, it may not be processed until the Monday. Equally, withdrawals via crypto tend to be much faster than traditional finance routes."
+            },
+            {
+              "q": "Is there a minimum limit before I can withdraw?",
+              "a": "AFFILIATE COMMISSIONS - YES. You will not be able to place a withdrawal request until you have reached $100 in commissions. There is also no part payment, you place a request and your total outstanding commissions are withdrawn in full.\n\nTRADING PROFITS - YES. There needs to be a minimum of $50 in your available equity in order to request a withdrawal."
             }
           ]
         },
@@ -450,6 +458,14 @@
             {
               "q": "Kann Pandora AI auf mein Geld zugreifen?",
               "a": "Nein. Pandora-Strategien können auf deinem Konto nur über freigegebene Systeme (z. B. Copytrading-Setups) handeln. Auszahlungen bleiben immer unter deiner Kontrolle."
+            },
+            {
+              "q": "Wie lange dauern Auszahlungen?",
+              "a": "Die Geschäftsbedingungen besagen, dass eine Auszahlung zwischen 1 und 5 Tagen dauern kann. Axis bemüht sich, dies unter 24 Stunden zu halten, jedoch ist dies nicht immer möglich, je nach Tageszeit der Anfrage oder wenn die Anfrage am Wochenende gestellt wird – sie wird möglicherweise erst am Montag bearbeitet. Ebenso sind Auszahlungen über Krypto in der Regel deutlich schneller als über traditionelle Finanzwege."
+            },
+            {
+              "q": "Gibt es ein Mindestlimit, bevor ich abheben kann?",
+              "a": "AFFILIATE-PROVISIONEN - JA. Du kannst keine Auszahlungsanfrage stellen, bis du 100 $ an Provisionen erreicht hast. Es gibt auch keine Teilzahlung – du stellst eine Anfrage und deine gesamten ausstehenden Provisionen werden vollständig ausgezahlt.\n\nTRADING-GEWINNE - JA. Es muss mindestens 50 $ in deinem verfügbaren Eigenkapital vorhanden sein, um eine Auszahlung anzufordern."
             }
           ]
         },
@@ -517,4 +533,3 @@
     }
   }
 }
-
