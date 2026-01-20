@@ -124,7 +124,7 @@
       "faq_topics": [
         {
           "id": "how_to_guides",
-          "title": "How To Guides",
+          "title": "📚 How To Guides",
           "questions": [
             {
               "q": "How do I KYC?",
@@ -420,7 +420,7 @@
       "faq_topics": [
         {
           "id": "how_to_guides",
-          "title": "Anleitungen",
+          "title": "📚 Anleitungen",
           "questions": [
             {
               "q": "Wie führe ich KYC durch?",
