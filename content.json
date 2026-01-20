@@ -123,6 +123,32 @@
       "disclaimer_image_url": "https://drive.google.com/uc?export=download&id=1IBv7B7mN2p9wROBcbIXjdXhjHg4az3t2",
       "faq_topics": [
         {
+          "id": "how_to_guides",
+          "title": "How To Guides",
+          "questions": [
+            {
+              "q": "How do I KYC?",
+              "a": "Click the link below to view the complete KYC guide.",
+              "link": "https://drive.google.com/file/d/18TaoWtVOKWC9GfjY5nNzUifl0u8O4VLN/view?usp=sharing"
+            },
+            {
+              "q": "How do I switch strategies?",
+              "a": "Click the link below to view the complete strategy switching guide.",
+              "link": "https://drive.google.com/file/d/1ukbz96GVzJjIYNuunKJpgcwxPKK1JM5T/view?usp=sharing"
+            },
+            {
+              "q": "How do I get my referral links?",
+              "a": "Click the link below to view the complete referral links guide.",
+              "link": "https://drive.google.com/file/d/1h_byc_zwUObYR3CHMxHQS55VvTGedgS-/view?usp=sharing"
+            },
+            {
+              "q": "How do I check my trades?",
+              "a": "Click the link below to view the complete trade checking guide.",
+              "link": "https://drive.google.com/file/d/1nGPHTZDYA5_dwbdpeeUiRtbOkfiQelQM/view?usp=sharing"
+            }
+          ]
+        },
+        {
           "id": "copytrading",
           "title": "CopyTrading",
           "questions": [
@@ -392,6 +418,32 @@
       "disclaimer_text": "⚠️ HINWEIS \n\nBitte lies den Haftungsausschluss sorgfältig.\nDieser Bot/diese Plattform stellt keine Finanzberatung dar, sondern dient als Tool zur Information und Orientierung.\n\n📚 Bitte immer selbst recherchieren! 📚",
       "disclaimer_image_url": "https://drive.google.com/uc?export=download&id=1kAhmlQy0bf-Ya99nLMTfF5yI_DmBM-lp",
       "faq_topics": [
+        {
+          "id": "how_to_guides",
+          "title": "Anleitungen",
+          "questions": [
+            {
+              "q": "Wie führe ich KYC durch?",
+              "a": "Klicke auf den Link unten, um die vollständige KYC-Anleitung anzuzeigen.",
+              "link": "https://drive.google.com/file/d/12hLyATa0O3bfg19yK-Arh4kv3Z4XVKCX/view?usp=sharing"
+            },
+            {
+              "q": "Wie wechsle ich Strategien?",
+              "a": "Klicke auf den Link unten, um die vollständige Anleitung zum Strategiewechsel anzuzeigen.",
+              "link": "https://drive.google.com/file/d/1rTt9J4Xr6DEFopGEBtOhHPSKXreSmbAp/view?usp=sharing"
+            },
+            {
+              "q": "Wie erhalte ich meine Referral-Links?",
+              "a": "Klicke auf den Link unten, um die vollständige Anleitung zu Referral-Links anzuzeigen.",
+              "link": "https://drive.google.com/file/d/1TVxPHANlmc9Ojaei9pkKHPdk9tKCDFK4/view?usp=sharing"
+            },
+            {
+              "q": "Wie überprüfe ich meine Trades?",
+              "a": "Klicke auf den Link unten, um die vollständige Anleitung zur Trade-Überprüfung anzuzeigen.",
+              "link": "https://drive.google.com/file/d/1BhQGzDYAzrtYMIcloDuMdMs8JEPWlYlV/view?usp=sharing"
+            }
+          ]
+        },
         {
           "id": "copytrading",
           "title": "CopyTrading",
