@@ -467,17 +467,23 @@ def get_admin_statistics() -> Dict[str, Any]:
 
 
 def get_top_performers(limit: int = 10) -> List[Dict[str, Any]]:
-    """Get top performing referrers by team size."""
+    """Get top performing referrers by team size with engagement metrics."""
     conn = db_connect()
     cur = conn.cursor()
     
-    # Get top referrers with their team sizes and info
+    # Check if created_at column exists for growth tracking
+    cur.execute("PRAGMA table_info(users)")
+    columns = [row["name"] for row in cur.fetchall()]
+    has_created_at = "created_at" in columns
+    
+    # Get top referrers with their team sizes and engagement metrics
     cur.execute("""
         SELECT 
             u.sponsor_code as ref_code,
             COUNT(*) as team_size,
             r.owner_telegram_id,
-            COUNT(CASE WHEN team_ref.ref_code IS NOT NULL THEN 1 END) as team_with_links
+            COUNT(CASE WHEN team_ref.ref_code IS NOT NULL THEN 1 END) as team_with_links,
+            COUNT(CASE WHEN u.step1_confirmed = 1 THEN 1 END) as team_step1_confirmed
         FROM users u
         LEFT JOIN referrers r ON u.sponsor_code = r.ref_code
         LEFT JOIN referrers team_ref ON u.telegram_user_id = team_ref.owner_telegram_id
@@ -488,17 +494,39 @@ def get_top_performers(limit: int = 10) -> List[Dict[str, Any]]:
     """, (limit,))
     
     rows = cur.fetchall()
-    conn.close()
     
     performers = []
     for row in rows:
+        ref_code = row["ref_code"]
+        team_size = row["team_size"]
+        team_with_links = row["team_with_links"]
+        team_step1_confirmed = row["team_step1_confirmed"]
+        
+        # Calculate growth rate (last 7 days) if created_at exists
+        team_growth_7d = 0
+        if has_created_at:
+            try:
+                cur.execute("""
+                    SELECT COUNT(*) as count FROM users
+                    WHERE sponsor_code = ?
+                    AND created_at IS NOT NULL
+                    AND datetime(created_at) > datetime('now', '-7 days')
+                """, (ref_code,))
+                team_growth_7d = cur.fetchone()["count"]
+            except Exception:
+                team_growth_7d = 0
+        
         performers.append({
-            "ref_code": row["ref_code"],
-            "team_size": row["team_size"],
-            "team_with_links": row["team_with_links"],
-            "owner_telegram_id": row["owner_telegram_id"]
+            "ref_code": ref_code,
+            "team_size": team_size,
+            "team_with_links": team_with_links,
+            "team_step1_confirmed": team_step1_confirmed,
+            "team_growth_7d": team_growth_7d,
+            "owner_telegram_id": row["owner_telegram_id"],
+            "has_growth_data": has_created_at
         })
     
+    conn.close()
     return performers
 
 
@@ -964,14 +992,50 @@ Users Who Set Links: **{stats['users_with_links']:,}** ({visitor_to_links:.1f}%)
                     # If we can't get info, just show ID
                     display_name = f"User {owner_id}"
                 
-                # Calculate percentage of team that set links
+                # Calculate metrics
                 team_size = performer['team_size']
                 team_with_links = performer['team_with_links']
-                links_percentage = (team_with_links / team_size * 100) if team_size > 0 else 0
+                team_step1_confirmed = performer['team_step1_confirmed']
+                team_growth_7d = performer['team_growth_7d']
+                has_growth_data = performer['has_growth_data']
                 
+                links_percentage = (team_with_links / team_size * 100) if team_size > 0 else 0
+                step1_percentage = (team_step1_confirmed / team_size * 100) if team_size > 0 else 0
+                
+                # Calculate Activity Score (0-5 stars based on engagement)
+                # Factors: set links %, step1 confirmed %
+                activity_score = 0
+                if links_percentage >= 60: activity_score += 2
+                elif links_percentage >= 40: activity_score += 1.5
+                elif links_percentage >= 20: activity_score += 1
+                
+                if step1_percentage >= 60: activity_score += 2
+                elif step1_percentage >= 40: activity_score += 1.5
+                elif step1_percentage >= 20: activity_score += 1
+                
+                # Add bonus for large teams
+                if team_size >= 30: activity_score += 0.5
+                elif team_size >= 20: activity_score += 0.3
+                
+                # Cap at 5 stars
+                activity_score = min(5, activity_score)
+                stars = "⭐" * int(activity_score)
+                if activity_score % 1 >= 0.5:
+                    stars += "½"
+                
+                # Build performer entry
                 report += f"{i}. {performer['ref_code']} - {display_name}\n"
-                report += f"   • Team Size: **{team_size}**\n"
+                report += f"   • Team Size: **{team_size}**"
+                
+                # Add growth indicator if available
+                if has_growth_data and team_growth_7d > 0:
+                    report += f" (+{team_growth_7d} this week)"
+                
+                report += "\n"
                 report += f"   • Set Links: **{team_with_links}** ({links_percentage:.0f}%)\n"
+                report += f"   • Confirmed Step 1: **{team_step1_confirmed}** ({step1_percentage:.0f}%)\n"
+                report += f"   • Team Activity: {stars} ({activity_score:.1f}/5)\n"
+                
                 if i < len(performers):
                     report += "\n"
         else:
