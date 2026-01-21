@@ -476,9 +476,11 @@ def get_top_performers(limit: int = 10) -> List[Dict[str, Any]]:
         SELECT 
             u.sponsor_code as ref_code,
             COUNT(*) as team_size,
-            r.owner_telegram_id
+            r.owner_telegram_id,
+            COUNT(CASE WHEN team_ref.ref_code IS NOT NULL THEN 1 END) as team_with_links
         FROM users u
         LEFT JOIN referrers r ON u.sponsor_code = r.ref_code
+        LEFT JOIN referrers team_ref ON u.telegram_user_id = team_ref.owner_telegram_id
         WHERE u.sponsor_code IS NOT NULL AND u.sponsor_code != ''
         GROUP BY u.sponsor_code
         ORDER BY team_size DESC
@@ -493,6 +495,7 @@ def get_top_performers(limit: int = 10) -> List[Dict[str, Any]]:
         performers.append({
             "ref_code": row["ref_code"],
             "team_size": row["team_size"],
+            "team_with_links": row["team_with_links"],
             "owner_telegram_id": row["owner_telegram_id"]
         })
     
@@ -961,8 +964,14 @@ Users Who Set Links: **{stats['users_with_links']:,}** ({visitor_to_links:.1f}%)
                     # If we can't get info, just show ID
                     display_name = f"User {owner_id}"
                 
+                # Calculate percentage of team that set links
+                team_size = performer['team_size']
+                team_with_links = performer['team_with_links']
+                links_percentage = (team_with_links / team_size * 100) if team_size > 0 else 0
+                
                 report += f"{i}. {performer['ref_code']} - {display_name}\n"
-                report += f"   • Team Size: **{performer['team_size']}**\n"
+                report += f"   • Team Size: **{team_size}**\n"
+                report += f"   • Set Links: **{team_with_links}** ({links_percentage:.0f}%)\n"
                 if i < len(performers):
                     report += "\n"
         else:
