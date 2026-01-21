@@ -402,37 +402,52 @@ def get_admin_statistics() -> Dict[str, Any]:
     cur.execute("SELECT COUNT(*) as count FROM users WHERE step2_warning_ack = 1")
     step2_ack = cur.fetchone()["count"]
     
-    # Users in last 24 hours (requires created_at column)
-    cur.execute("""
-        SELECT COUNT(*) as count FROM users 
-        WHERE created_at IS NOT NULL 
-        AND datetime(created_at) > datetime('now', '-1 day')
-    """)
-    users_24h = cur.fetchone()["count"]
+    # Check if created_at column exists
+    cur.execute("PRAGMA table_info(users)")
+    columns = [row["name"] for row in cur.fetchall()]
+    has_created_at = "created_at" in columns
     
-    # New links in last 24 hours
-    cur.execute("""
-        SELECT COUNT(*) as count FROM referrers 
-        WHERE created_at IS NOT NULL 
-        AND datetime(created_at) > datetime('now', '-1 day')
-    """)
-    links_24h = cur.fetchone()["count"]
+    # Users in last 24 hours (if created_at exists)
+    users_24h = 0
+    links_24h = 0
+    users_7d = 0
+    links_7d = 0
     
-    # Users in last 7 days
-    cur.execute("""
-        SELECT COUNT(*) as count FROM users 
-        WHERE created_at IS NOT NULL 
-        AND datetime(created_at) > datetime('now', '-7 days')
-    """)
-    users_7d = cur.fetchone()["count"]
-    
-    # New links in last 7 days
-    cur.execute("""
-        SELECT COUNT(*) as count FROM referrers 
-        WHERE created_at IS NOT NULL 
-        AND datetime(created_at) > datetime('now', '-7 days')
-    """)
-    links_7d = cur.fetchone()["count"]
+    if has_created_at:
+        try:
+            cur.execute("""
+                SELECT COUNT(*) as count FROM users 
+                WHERE created_at IS NOT NULL 
+                AND datetime(created_at) > datetime('now', '-1 day')
+            """)
+            users_24h = cur.fetchone()["count"]
+            
+            # New links in last 24 hours
+            cur.execute("""
+                SELECT COUNT(*) as count FROM referrers 
+                WHERE created_at IS NOT NULL 
+                AND datetime(created_at) > datetime('now', '-1 day')
+            """)
+            links_24h = cur.fetchone()["count"]
+            
+            # Users in last 7 days
+            cur.execute("""
+                SELECT COUNT(*) as count FROM users 
+                WHERE created_at IS NOT NULL 
+                AND datetime(created_at) > datetime('now', '-7 days')
+            """)
+            users_7d = cur.fetchone()["count"]
+            
+            # New links in last 7 days
+            cur.execute("""
+                SELECT COUNT(*) as count FROM referrers 
+                WHERE created_at IS NOT NULL 
+                AND datetime(created_at) > datetime('now', '-7 days')
+            """)
+            links_7d = cur.fetchone()["count"]
+        except Exception:
+            # If queries fail, just use 0
+            pass
     
     conn.close()
     
@@ -446,7 +461,8 @@ def get_admin_statistics() -> Dict[str, Any]:
         "users_24h": users_24h,
         "links_24h": links_24h,
         "users_7d": users_7d,
-        "links_7d": links_7d
+        "links_7d": links_7d,
+        "has_time_tracking": has_created_at
     }
 
 
@@ -963,14 +979,24 @@ Set Links → Confirm Step 1: {links_to_step1:.1f}%
 {'═'*35}
 📅 **RECENT ACTIVITY**
 {'═'*35}
-**Last 24 Hours:**
+"""
+        
+        if stats.get('has_time_tracking', False):
+            report += f"""**Last 24 Hours:**
 • New Users: {stats['users_24h']}
 • New Link Setups: {stats['links_24h']}
 
 **Last 7 Days:**
 • New Users: {stats['users_7d']}
 • New Link Setups: {stats['links_7d']}
-
+"""
+        else:
+            report += """**Time-based tracking not available yet.**
+New users will be tracked from now on.
+Check back tomorrow for 24h/7d stats!
+"""
+        
+        report += f"""
 {'─'*35}
 Updated: Just now
 """
@@ -1009,12 +1035,6 @@ async def send_daily_report(context: ContextTypes.DEFAULT_TYPE) -> None:
 {datetime.now().strftime('%A, %B %d, %Y')}
 
 {'═'*35}
-📈 **YESTERDAY'S ACTIVITY**
-{'═'*35}
-New Users: **{stats['users_24h']}**
-New Link Setups: **{stats['links_24h']}**
-
-{'═'*35}
 📊 **CURRENT TOTALS**
 {'═'*35}
 Total Users: **{stats['total_users']:,}**
@@ -1022,11 +1042,26 @@ Users with Links: **{stats['users_with_links']:,}**
 Generic Visitors: {stats['generic_visitors']:,}
 
 {'═'*35}
+📈 **YESTERDAY'S ACTIVITY**
+{'═'*35}
+"""
+    
+    if stats.get('has_time_tracking', False):
+        report += f"""New Users: **{stats['users_24h']}**
+New Link Setups: **{stats['links_24h']}**
+
+{'═'*35}
 📅 **WEEKLY PROGRESS**
 {'═'*35}
 New Users (7 days): **{stats['users_7d']}**
 New Links (7 days): **{stats['links_7d']}**
-
+"""
+    else:
+        report += """Time tracking not yet available.
+New users will be tracked from now on.
+"""
+    
+    report += f"""
 {'─'*35}
 Use /adminstats for detailed analytics
 """
