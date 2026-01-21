@@ -119,6 +119,12 @@ def db_init() -> None:
     except sqlite3.OperationalError:
         pass
 
+    # Add version tracking column
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN last_seen_version TEXT DEFAULT '0.0.0'")
+    except sqlite3.OperationalError:
+        pass
+
     conn.commit()
     conn.close()
 
@@ -126,6 +132,122 @@ def db_init() -> None:
 def generate_ref_code(length: int = 6) -> str:
     alphabet = string.ascii_uppercase + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(length))
+
+
+def get_bot_version() -> str:
+    """Get current bot version from environment variable."""
+    return (os.environ.get("BOT_VERSION") or "1.0.0").strip()
+
+
+def get_user_version(telegram_user_id: int) -> str:
+    """Get the last version this user saw."""
+    conn = db_connect()
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "SELECT last_seen_version FROM users WHERE telegram_user_id=?",
+            (telegram_user_id,)
+        )
+        row = cur.fetchone()
+        if row and row["last_seen_version"]:
+            return row["last_seen_version"]
+        return "0.0.0"
+    except Exception:
+        return "0.0.0"
+    finally:
+        conn.close()
+
+
+def update_user_version(telegram_user_id: int, version: str) -> None:
+    """Update user's last seen version."""
+    conn = db_connect()
+    cur = conn.cursor()
+    try:
+        # Ensure user exists in database
+        cur.execute(
+            "INSERT OR IGNORE INTO users (telegram_user_id, last_seen_version) VALUES (?, ?)",
+            (telegram_user_id, version)
+        )
+        # Update version
+        cur.execute(
+            "UPDATE users SET last_seen_version=? WHERE telegram_user_id=?",
+            (version, telegram_user_id)
+        )
+        conn.commit()
+    except Exception as e:
+        logger.warning(f"Failed to update user version: {e}")
+    finally:
+        conn.close()
+
+
+def version_compare(v1: str, v2: str) -> int:
+    """
+    Compare two version strings.
+    Returns: -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
+    """
+    try:
+        parts1 = [int(x) for x in v1.split('.')]
+        parts2 = [int(x) for x in v2.split('.')]
+        
+        # Pad to same length
+        while len(parts1) < len(parts2):
+            parts1.append(0)
+        while len(parts2) < len(parts1):
+            parts2.append(0)
+        
+        for p1, p2 in zip(parts1, parts2):
+            if p1 < p2:
+                return -1
+            if p1 > p2:
+                return 1
+        return 0
+    except Exception:
+        # If version parsing fails, treat as equal
+        return 0
+
+
+async def check_and_show_update_notification(
+    update: Update, 
+    context: ContextTypes.DEFAULT_TYPE,
+    all_content: Dict[str, Any]
+) -> bool:
+    """
+    Check if user needs to see update notification.
+    Returns True if notification was shown, False otherwise.
+    """
+    user_id = update.effective_user.id if update.effective_user else None
+    if not user_id:
+        return False
+    
+    current_version = get_bot_version()
+    user_version = get_user_version(user_id)
+    
+    # If user's version is older, show notification
+    if version_compare(user_version, current_version) < 0:
+        content = get_active_content(context, all_content)
+        
+        title = ui_get(content, "update_notification_title", "🎉 Bot Updated!")
+        text = ui_get(content, "update_notification_text", "The bot has been updated with new features!")
+        cta = ui_get(content, "update_notification_cta", "\n\nTap /start to explore!")
+        
+        full_message = f"{title}\n\n{text}{cta}"
+        
+        try:
+            await context.bot.send_message(
+                chat_id=user_id,
+                text=full_message,
+                parse_mode=None
+            )
+            # Update user's version so they don't see this again
+            update_user_version(user_id, current_version)
+            return True
+        except Exception as e:
+            logger.warning(f"Failed to send update notification: {e}")
+            # Still update version to avoid repeated failures
+            update_user_version(user_id, current_version)
+            return False
+    
+    return False
 
 
 def upsert_user(telegram_user_id: int, sponsor_code: Optional[str] = None) -> None:
@@ -202,6 +324,46 @@ def set_step2_warning_ack(telegram_user_id: int, ack: bool) -> None:
     )
     conn.commit()
     conn.close()
+
+
+def get_team_stats(ref_code: str) -> Dict[str, Any]:
+    """Get statistics for a team based on ref code."""
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    # Total team members (people who used this ref code)
+    cur.execute(
+        "SELECT COUNT(*) as count FROM users WHERE sponsor_code = ?",
+        (ref_code,)
+    )
+    total_team = cur.fetchone()["count"]
+    
+    # Team members who set up their own links
+    cur.execute(
+        """
+        SELECT COUNT(*) as count 
+        FROM users u 
+        INNER JOIN referrers r ON u.telegram_user_id = r.owner_telegram_id 
+        WHERE u.sponsor_code = ?
+        """,
+        (ref_code,)
+    )
+    team_with_links = cur.fetchone()["count"]
+    
+    # Team members who confirmed Step 1
+    cur.execute(
+        "SELECT COUNT(*) as count FROM users WHERE sponsor_code = ? AND step1_confirmed = 1",
+        (ref_code,)
+    )
+    team_step1_confirmed = cur.fetchone()["count"]
+    
+    conn.close()
+    
+    return {
+        "total_team": total_team,
+        "team_with_links": team_with_links,
+        "team_step1_confirmed": team_step1_confirmed
+    }
 
 
 def get_referrer_by_owner(owner_telegram_id: int) -> Optional[Dict[str, Any]]:
@@ -309,8 +471,7 @@ def build_main_menu(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     # How to Join
     # Corporate Info
     # FAQ
-    # Set Referral links
-    # Share My Invite Link
+    # Affiliate Tools (new submenu containing Set Links, Share Invite, Check Links, Stats)
     # Language
     # Official Telegram Channel
     # Support
@@ -322,8 +483,7 @@ def build_main_menu(content: Dict[str, Any]) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(ui_get(content, "menu_join", "🤝 How to Join"), callback_data="menu:join")],
         [InlineKeyboardButton(ui_get(content, "menu_corporate", "🏢 Corporate Info"), callback_data="menu:corporate")],
         [InlineKeyboardButton(ui_get(content, "menu_faq", "📌 FAQ"), callback_data="menu:faq")],
-        [InlineKeyboardButton(ui_get(content, "menu_set_links", "🔗 Set Referral Links"), callback_data="menu:set_links")],
-        [InlineKeyboardButton(ui_get(content, "menu_share_invite", "📩 Share My Invite Link"), callback_data="menu:share_invite")],
+        [InlineKeyboardButton(ui_get(content, "menu_affiliate_tools", "🛠 Affiliate Tools"), callback_data="menu:affiliate_tools")],
         [InlineKeyboardButton(ui_get(content, "menu_language", "🌍 Language"), callback_data="menu:language")],
         [InlineKeyboardButton(ui_get(content, "menu_official_channel", "👉🏼 Official Telegram Channel"), url=official_url)],
         [InlineKeyboardButton(ui_get(content, "menu_support", "🧑‍💻 Support"), callback_data="menu:support")],
@@ -359,10 +519,11 @@ def ref_links_help_kb(content: Dict[str, Any], help_url: str) -> InlineKeyboardM
 
 
 def my_invite_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
-    """Keyboard for My Invite Link submenu with two options."""
+    """Keyboard for My Invite Link submenu with three options."""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(ui_get(content, "share_invite_btn", "📤 Share My Invite Link"), callback_data="invite:share")],
         [InlineKeyboardButton(ui_get(content, "check_ref_links_btn", "🔍 Check My Referral Links"), callback_data="invite:check_links")],
+        [InlineKeyboardButton(ui_get(content, "my_team_stats_btn", "📊 My Team Stats"), callback_data="invite:team_stats")],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
     ])
 
@@ -371,6 +532,17 @@ def check_ref_links_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     """Keyboard for Check My Referral Links screen with share button."""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(ui_get(content, "share_invite_btn", "📤 Share My Invite Link"), callback_data="invite:share")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
+def affiliate_tools_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Keyboard for Affiliate Tools submenu."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "share_invite_btn", "📤 Share My Invite Link"), callback_data="affiliate:share_invite")],
+        [InlineKeyboardButton(ui_get(content, "menu_set_links", "🔗 Set Referral Links"), callback_data="affiliate:set_links")],
+        [InlineKeyboardButton(ui_get(content, "check_ref_links_btn", "🔍 Check My Referral Links"), callback_data="affiliate:check_links")],
+        [InlineKeyboardButton(ui_get(content, "my_team_stats_btn", "🤖 My Bot Link Stats"), callback_data="affiliate:stats")],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
     ])
 
@@ -540,6 +712,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.effective_user:
         upsert_user(update.effective_user.id, sponsor_code=sponsor_code)
 
+    # Check and show update notification if needed
+    await check_and_show_update_notification(update, context, all_content)
+
     if not user_has_selected_lang(context, all_content):
         default_lang = get_default_lang(all_content)
         default_block = all_content.get("languages", {}).get(default_lang, {})
@@ -706,6 +881,11 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         await safe_show_menu_message(query, context, ui_get(content, "faq_topics_title", "📌 FAQ Topics\n\nChoose a topic:"), faq_topics_kb(content, faq_topics))
         return
 
+    if action == "affiliate_tools":
+        title = ui_get(content, "affiliate_tools_title", "🛠 Affiliate Tools\n\nSelect an option:")
+        await safe_show_menu_message(query, context, title, affiliate_tools_kb(content))
+        return
+
     if action == "support":
         context.user_data["faq_search_mode"] = False
         await safe_show_menu_message(query, context, content.get("support_text", "Support"), back_to_menu_kb(content))
@@ -806,6 +986,151 @@ async def on_invite_click(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         full_text = f"{title}\n\n{links_text}"
         
         await safe_show_menu_message(query, context, full_text, check_ref_links_kb(content))
+        return
+
+    if data == "invite:team_stats":
+        # Show user's team statistics
+        ref_code = ref.get("ref_code", "")
+        
+        # Get team stats
+        stats = get_team_stats(ref_code)
+        
+        # Build invite link
+        invite_link = build_invite_link(ref_code, content)
+        
+        # Determine growth message
+        if stats["total_team"] > 0:
+            growth_message = ui_get(content, "my_team_stats_growth", "📈 Your team is growing! Keep sharing!")
+        else:
+            growth_message = ui_get(content, "my_team_stats_no_team", "No one has used your invite link yet. Share it to start building your team! 🚀")
+        
+        # Build stats text
+        stats_template = ui_get(
+            content,
+            "my_team_stats_text",
+            "Your Ref Code: {ref_code}\nPeople who used your link: {total_team}"
+        )
+        
+        stats_text = stats_template.replace("{ref_code}", ref_code) \
+                                    .replace("{invite_link}", invite_link) \
+                                    .replace("{total_team}", str(stats["total_team"])) \
+                                    .replace("{team_with_links}", str(stats["team_with_links"])) \
+                                    .replace("{team_step1_confirmed}", str(stats["team_step1_confirmed"])) \
+                                    .replace("{growth_message}", growth_message)
+        
+        title = ui_get(content, "my_team_stats_title", "📊 Your Team Stats")
+        full_text = f"{title}\n\n{stats_text}"
+        
+        await safe_show_menu_message(query, context, full_text, back_to_menu_kb(content))
+        return
+
+    await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), back_to_menu_kb(content))
+
+
+async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle Affiliate Tools submenu actions."""
+    query = update.callback_query
+    await query.answer()
+
+    db_init()
+    all_content = load_all_content()
+    content = get_active_content(context, all_content)
+
+    data = query.data or ""
+    user_id = query.from_user.id
+    action = data.split(":", 1)[1] if ":" in data else ""
+
+    # Get user's referral info (needed for most actions)
+    ref = get_referrer_by_owner(user_id)
+
+    if action == "share_invite":
+        # Share invite link - requires links to be set
+        if not ref:
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
+            return
+        invite = build_invite_link(ref["ref_code"], content)
+        share_text = ui_get(content, "ref_share_text", "Share your invite:\n\n{invite}").replace("{invite}", invite)
+        await safe_show_menu_message(query, context, share_text, back_to_menu_kb(content))
+        return
+
+    if action == "set_links":
+        # Set referral links - same as menu:set_links
+        context.user_data["awaiting_step1_url"] = False
+        context.user_data["awaiting_step2_url"] = False
+        context.user_data["temp_step1_url"] = ""
+        context.user_data["temp_step2_url"] = ""
+
+        question = ui_get(content, "ref_ready_question", "Do you have your Step 1 and Step 2 referral links ready to go?")
+        kb = InlineKeyboardMarkup([
+            [
+                InlineKeyboardButton(ui_get(content, "ref_ready_yes", "✅ Yes"), callback_data="ref:ready:yes"),
+                InlineKeyboardButton(ui_get(content, "ref_ready_no", "❌ No"), callback_data="ref:ready:no"),
+            ],
+            [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")],
+        ])
+        await safe_show_menu_message(query, context, question, kb)
+        return
+
+    if action == "check_links":
+        # Check referral links - requires links to be set
+        if not ref:
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
+            return
+        
+        step1_url = ref.get("step1_url", "Not set")
+        step2_url = ref.get("step2_url", "Not set")
+        
+        links_template = ui_get(
+            content, 
+            "my_ref_links_text", 
+            "📋 Here are your saved referral links:\n\n🔗 Step 1:\n{step1}\n\n🔗 Step 2:\n{step2}"
+        )
+        links_text = links_template.replace("{step1}", step1_url).replace("{step2}", step2_url)
+        
+        title = ui_get(content, "my_ref_links_title", "🔍 Your Referral Links")
+        full_text = f"{title}\n\n{links_text}"
+        
+        await safe_show_menu_message(query, context, full_text, check_ref_links_kb(content))
+        return
+
+    if action == "stats":
+        # Show team stats - requires links to be set
+        if not ref:
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
+            return
+        
+        ref_code = ref.get("ref_code", "")
+        
+        # Get team stats
+        stats = get_team_stats(ref_code)
+        
+        # Build invite link
+        invite_link = build_invite_link(ref_code, content)
+        
+        # Determine growth message
+        if stats["total_team"] > 0:
+            growth_message = ui_get(content, "my_team_stats_growth", "📈 Your team is growing! Keep sharing!")
+        else:
+            growth_message = ui_get(content, "my_team_stats_no_team", "No one has used your invite link yet. Share it to start building your team! 🚀")
+        
+        # Build stats text
+        stats_template = ui_get(
+            content,
+            "my_team_stats_text",
+            "Your Ref Code: {ref_code}\nPeople who used your link: {total_team}"
+        )
+        
+        stats_text = stats_template.replace("{ref_code}", ref_code) \
+                                    .replace("{invite_link}", invite_link) \
+                                    .replace("{total_team}", str(stats["total_team"])) \
+                                    .replace("{team_with_links}", str(stats["team_with_links"])) \
+                                    .replace("{team_step1_confirmed}", str(stats["team_step1_confirmed"])) \
+                                    .replace("{growth_message}", growth_message)
+        
+        title = ui_get(content, "my_team_stats_title", "📊 Your Pandora AI Bot Link Stats")
+        full_text = f"{title}\n\n{stats_text}"
+        
+        await safe_show_menu_message(query, context, full_text, back_to_menu_kb(content))
         return
 
     await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), back_to_menu_kb(content))
@@ -1000,6 +1325,9 @@ async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     all_content = load_all_content()
     content = get_active_content(context, all_content)
 
+    # Check and show update notification if needed (before processing message)
+    await check_and_show_update_notification(update, context, all_content)
+
     msg = update.message.text.strip()
     user_id = update.effective_user.id if update.effective_user else None
 
@@ -1169,6 +1497,7 @@ def main() -> None:
 
     app.add_handler(CallbackQueryHandler(on_ref_click, pattern=r"^ref:"))
     app.add_handler(CallbackQueryHandler(on_invite_click, pattern=r"^invite:"))
+    app.add_handler(CallbackQueryHandler(on_affiliate_click, pattern=r"^affiliate:"))
     app.add_handler(CallbackQueryHandler(on_language_click, pattern=r"^lang:set:"))
     app.add_handler(CallbackQueryHandler(on_join_click, pattern=r"^join:"))
     app.add_handler(CallbackQueryHandler(on_faq_click, pattern=r"^(faq_topic:|faq_q:|faq_back_|faq_search:)"))
