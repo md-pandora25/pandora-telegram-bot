@@ -858,31 +858,61 @@ async def adminstats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     user_id = update.effective_user.id
     admin_ids_str = os.getenv("ADMIN_USER_IDS", "")
     
+    # Debug: Show what we're checking
+    debug_msg = f"🔍 Debug Info:\n"
+    debug_msg += f"Your User ID: {user_id}\n"
+    debug_msg += f"ADMIN_USER_IDS env var: '{admin_ids_str}'\n"
+    
     if not admin_ids_str:
-        # No admins configured - silently ignore
+        # No admins configured
+        await update.message.reply_text(
+            "❌ ADMIN_USER_IDS environment variable is not set in Railway.\n\n"
+            f"Your Telegram User ID is: {user_id}\n\n"
+            "Please add this to Railway:\n"
+            "Variable: ADMIN_USER_IDS\n"
+            f"Value: {user_id}"
+        )
         return
     
     try:
         admin_ids = [int(id.strip()) for id in admin_ids_str.split(",") if id.strip()]
-    except ValueError:
+        debug_msg += f"Parsed Admin IDs: {admin_ids}\n"
+    except ValueError as e:
         # Invalid admin IDs configured
+        await update.message.reply_text(
+            f"❌ Error parsing ADMIN_USER_IDS: {e}\n\n"
+            f"Current value: '{admin_ids_str}'\n"
+            f"Your User ID: {user_id}\n\n"
+            "Expected format: 123456789,987654321"
+        )
         return
     
+    debug_msg += f"Is {user_id} in {admin_ids}? {user_id in admin_ids}\n"
+    
     if user_id not in admin_ids:
-        # Not an admin - silently ignore or send unknown command
+        # Not an admin - show debug info
+        await update.message.reply_text(
+            f"❌ Access Denied\n\n"
+            f"{debug_msg}\n"
+            f"You are not in the admin list.\n\n"
+            "To add yourself:\n"
+            "1. Go to Railway\n"
+            "2. Update ADMIN_USER_IDS to include: {user_id}"
+        )
         return
     
     # User is admin - generate statistics
-    stats = get_admin_statistics()
-    performers = get_top_performers(limit=10)
-    
-    # Calculate conversion rates
-    visitor_to_links = (stats["users_with_links"] / stats["total_users"] * 100) if stats["total_users"] > 0 else 0
-    visitor_to_step1 = (stats["step1_confirmed"] / stats["total_users"] * 100) if stats["total_users"] > 0 else 0
-    links_to_step1 = (stats["step1_confirmed"] / stats["users_with_links"] * 100) if stats["users_with_links"] > 0 else 0
-    
-    # Build the report
-    report = f"""📊 **Pandora AI Bot Analytics**
+    try:
+        stats = get_admin_statistics()
+        performers = get_top_performers(limit=10)
+        
+        # Calculate conversion rates
+        visitor_to_links = (stats["users_with_links"] / stats["total_users"] * 100) if stats["total_users"] > 0 else 0
+        visitor_to_step1 = (stats["step1_confirmed"] / stats["total_users"] * 100) if stats["total_users"] > 0 else 0
+        links_to_step1 = (stats["step1_confirmed"] / stats["users_with_links"] * 100) if stats["users_with_links"] > 0 else 0
+        
+        # Build the report
+        report = f"""📊 **Pandora AI Bot Analytics**
 Generated: {datetime.now().strftime('%b %d, %Y %I:%M %p')}
 
 {'═'*35}
@@ -900,26 +930,29 @@ Users Who Set Links: **{stats['users_with_links']:,}** ({visitor_to_links:.1f}%)
 🏆 **TOP 10 PERFORMERS** (by team size)
 {'═'*35}
 """
-    
-    # Get user info for top performers
-    for i, performer in enumerate(performers, 1):
-        owner_id = performer["owner_telegram_id"]
-        try:
-            # Try to get user info from Telegram
-            user = await context.bot.get_chat(owner_id)
-            name = user.first_name or "Unknown"
-            username = f"@{user.username}" if user.username else ""
-            display_name = f"{name} {username}".strip()
-        except Exception:
-            # If we can't get info, just show ID
-            display_name = f"User {owner_id}"
         
-        report += f"{i}. {performer['ref_code']} - {display_name}\n"
-        report += f"   • Team Size: **{performer['team_size']}**\n"
-        if i < len(performers):
-            report += "\n"
-    
-    report += f"""
+        # Get user info for top performers
+        if performers:
+            for i, performer in enumerate(performers, 1):
+                owner_id = performer["owner_telegram_id"]
+                try:
+                    # Try to get user info from Telegram
+                    user = await context.bot.get_chat(owner_id)
+                    name = user.first_name or "Unknown"
+                    username = f"@{user.username}" if user.username else ""
+                    display_name = f"{name} {username}".strip()
+                except Exception:
+                    # If we can't get info, just show ID
+                    display_name = f"User {owner_id}"
+                
+                report += f"{i}. {performer['ref_code']} - {display_name}\n"
+                report += f"   • Team Size: **{performer['team_size']}**\n"
+                if i < len(performers):
+                    report += "\n"
+        else:
+            report += "No referrers yet.\n\n"
+        
+        report += f"""
 {'═'*35}
 📈 **CONVERSION RATES**
 {'═'*35}
@@ -941,9 +974,17 @@ Set Links → Confirm Step 1: {links_to_step1:.1f}%
 {'─'*35}
 Updated: Just now
 """
-    
-    # Send report to admin
-    await update.message.reply_text(report, parse_mode='Markdown')
+        
+        # Send report to admin
+        await update.message.reply_text(report, parse_mode='Markdown')
+        
+    except Exception as e:
+        # Show any errors that occur
+        await update.message.reply_text(
+            f"❌ Error generating statistics:\n\n"
+            f"{type(e).__name__}: {str(e)}\n\n"
+            "Check Railway logs for details."
+        )
 
 
 async def send_daily_report(context: ContextTypes.DEFAULT_TYPE) -> None:
