@@ -547,6 +547,14 @@ def affiliate_tools_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     ])
 
 
+def affiliate_submenu_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Keyboard for Affiliate Tools submenu items (with back to affiliate tools button)."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "back_to_affiliate_tools", "⬅️ Back to Affiliate Tools"), callback_data="menu:affiliate_tools")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
 def about_kb(content: Dict[str, Any], url: str) -> InlineKeyboardMarkup:
     """Keyboard for the 'What is Pandora AI?' section.
 
@@ -1046,11 +1054,11 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if action == "share_invite":
         # Share invite link - requires links to be set
         if not ref:
-            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), affiliate_submenu_kb(content))
             return
         invite = build_invite_link(ref["ref_code"], content)
         share_text = ui_get(content, "ref_share_text", "Share your invite:\n\n{invite}").replace("{invite}", invite)
-        await safe_show_menu_message(query, context, share_text, back_to_menu_kb(content))
+        await safe_show_menu_message(query, context, share_text, affiliate_submenu_kb(content))
         return
 
     if action == "set_links":
@@ -1066,6 +1074,7 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 InlineKeyboardButton(ui_get(content, "ref_ready_yes", "✅ Yes"), callback_data="ref:ready:yes"),
                 InlineKeyboardButton(ui_get(content, "ref_ready_no", "❌ No"), callback_data="ref:ready:no"),
             ],
+            [InlineKeyboardButton(ui_get(content, "back_to_affiliate_tools", "⬅️ Back to Affiliate Tools"), callback_data="menu:affiliate_tools")],
             [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")],
         ])
         await safe_show_menu_message(query, context, question, kb)
@@ -1074,7 +1083,7 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if action == "check_links":
         # Check referral links - requires links to be set
         if not ref:
-            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), affiliate_submenu_kb(content))
             return
         
         step1_url = ref.get("step1_url", "Not set")
@@ -1090,13 +1099,13 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         title = ui_get(content, "my_ref_links_title", "🔍 Your Referral Links")
         full_text = f"{title}\n\n{links_text}"
         
-        await safe_show_menu_message(query, context, full_text, check_ref_links_kb(content))
+        await safe_show_menu_message(query, context, full_text, affiliate_submenu_kb(content))
         return
 
     if action == "stats":
         # Show team stats - requires links to be set
         if not ref:
-            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), affiliate_submenu_kb(content))
             return
         
         ref_code = ref.get("ref_code", "")
@@ -1104,25 +1113,20 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # Get team stats
         stats = get_team_stats(ref_code)
         
-        # Build invite link
-        invite_link = build_invite_link(ref_code, content)
-        
         # Determine growth message
         if stats["total_team"] > 0:
             growth_message = ui_get(content, "my_team_stats_growth", "📈 Your team is growing! Keep sharing!")
         else:
             growth_message = ui_get(content, "my_team_stats_no_team", "No one has used your invite link yet. Share it to start building your team! 🚀")
         
-        # Build stats text
+        # Build stats text (note: no longer using ref_code and invite_link placeholders)
         stats_template = ui_get(
             content,
             "my_team_stats_text",
-            "Your Ref Code: {ref_code}\nPeople who used your link: {total_team}"
+            "**👥 Team Overview:**\nPeople who used your link: {total_team}"
         )
         
-        stats_text = stats_template.replace("{ref_code}", ref_code) \
-                                    .replace("{invite_link}", invite_link) \
-                                    .replace("{total_team}", str(stats["total_team"])) \
+        stats_text = stats_template.replace("{total_team}", str(stats["total_team"])) \
                                     .replace("{team_with_links}", str(stats["team_with_links"])) \
                                     .replace("{team_step1_confirmed}", str(stats["team_step1_confirmed"])) \
                                     .replace("{growth_message}", growth_message)
@@ -1130,7 +1134,7 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         title = ui_get(content, "my_team_stats_title", "📊 Your Pandora AI Bot Link Stats")
         full_text = f"{title}\n\n{stats_text}"
         
-        await safe_show_menu_message(query, context, full_text, back_to_menu_kb(content))
+        await safe_show_menu_message(query, context, full_text, affiliate_submenu_kb(content))
         return
 
     await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), back_to_menu_kb(content))
