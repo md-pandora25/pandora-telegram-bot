@@ -5,6 +5,7 @@ import re
 import sqlite3
 import secrets
 import string
+from datetime import datetime
 from typing import Dict, Any, List, Tuple, Optional
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -15,6 +16,7 @@ from telegram.ext import (
     ContextTypes,
     MessageHandler,
     filters,
+    JobQueue,
 )
 
 logging.basicConfig(
@@ -122,6 +124,12 @@ def db_init() -> None:
     # Add version tracking column
     try:
         cur.execute("ALTER TABLE users ADD COLUMN last_seen_version TEXT DEFAULT '0.0.0'")
+    except sqlite3.OperationalError:
+        pass
+
+    # Add created_at column for tracking first interaction
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP")
     except sqlite3.OperationalError:
         pass
 
@@ -366,6 +374,115 @@ def get_team_stats(ref_code: str) -> Dict[str, Any]:
     }
 
 
+def get_admin_statistics() -> Dict[str, Any]:
+    """Get comprehensive bot statistics for admin."""
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    # Total unique users
+    cur.execute("SELECT COUNT(*) as count FROM users")
+    total_users = cur.fetchone()["count"]
+    
+    # Generic bot visitors (no sponsor code)
+    cur.execute("SELECT COUNT(*) as count FROM users WHERE sponsor_code IS NULL OR sponsor_code = ''")
+    generic_visitors = cur.fetchone()["count"]
+    
+    # Users via referral
+    referred_users = total_users - generic_visitors
+    
+    # Users who set their own links
+    cur.execute("SELECT COUNT(*) as count FROM referrers")
+    users_with_links = cur.fetchone()["count"]
+    
+    # Users who confirmed Step 1
+    cur.execute("SELECT COUNT(*) as count FROM users WHERE step1_confirmed = 1")
+    step1_confirmed = cur.fetchone()["count"]
+    
+    # Users who acknowledged Step 2
+    cur.execute("SELECT COUNT(*) as count FROM users WHERE step2_warning_ack = 1")
+    step2_ack = cur.fetchone()["count"]
+    
+    # Users in last 24 hours (requires created_at column)
+    cur.execute("""
+        SELECT COUNT(*) as count FROM users 
+        WHERE created_at IS NOT NULL 
+        AND datetime(created_at) > datetime('now', '-1 day')
+    """)
+    users_24h = cur.fetchone()["count"]
+    
+    # New links in last 24 hours
+    cur.execute("""
+        SELECT COUNT(*) as count FROM referrers 
+        WHERE created_at IS NOT NULL 
+        AND datetime(created_at) > datetime('now', '-1 day')
+    """)
+    links_24h = cur.fetchone()["count"]
+    
+    # Users in last 7 days
+    cur.execute("""
+        SELECT COUNT(*) as count FROM users 
+        WHERE created_at IS NOT NULL 
+        AND datetime(created_at) > datetime('now', '-7 days')
+    """)
+    users_7d = cur.fetchone()["count"]
+    
+    # New links in last 7 days
+    cur.execute("""
+        SELECT COUNT(*) as count FROM referrers 
+        WHERE created_at IS NOT NULL 
+        AND datetime(created_at) > datetime('now', '-7 days')
+    """)
+    links_7d = cur.fetchone()["count"]
+    
+    conn.close()
+    
+    return {
+        "total_users": total_users,
+        "generic_visitors": generic_visitors,
+        "referred_users": referred_users,
+        "users_with_links": users_with_links,
+        "step1_confirmed": step1_confirmed,
+        "step2_ack": step2_ack,
+        "users_24h": users_24h,
+        "links_24h": links_24h,
+        "users_7d": users_7d,
+        "links_7d": links_7d
+    }
+
+
+def get_top_performers(limit: int = 10) -> List[Dict[str, Any]]:
+    """Get top performing referrers by team size."""
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    # Get top referrers with their team sizes and info
+    cur.execute("""
+        SELECT 
+            u.sponsor_code as ref_code,
+            COUNT(*) as team_size,
+            r.owner_telegram_id
+        FROM users u
+        LEFT JOIN referrers r ON u.sponsor_code = r.ref_code
+        WHERE u.sponsor_code IS NOT NULL AND u.sponsor_code != ''
+        GROUP BY u.sponsor_code
+        ORDER BY team_size DESC
+        LIMIT ?
+    """, (limit,))
+    
+    rows = cur.fetchall()
+    conn.close()
+    
+    performers = []
+    for row in rows:
+        performers.append({
+            "ref_code": row["ref_code"],
+            "team_size": row["team_size"],
+            "owner_telegram_id": row["owner_telegram_id"]
+        })
+    
+    return performers
+
+
 def get_referrer_by_owner(owner_telegram_id: int) -> Optional[Dict[str, Any]]:
     conn = db_connect()
     cur = conn.cursor()
@@ -543,14 +660,6 @@ def affiliate_tools_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(ui_get(content, "menu_set_links", "🔗 Set Referral Links"), callback_data="affiliate:set_links")],
         [InlineKeyboardButton(ui_get(content, "check_ref_links_btn", "🔍 Check My Referral Links"), callback_data="affiliate:check_links")],
         [InlineKeyboardButton(ui_get(content, "my_team_stats_btn", "🤖 My Bot Link Stats"), callback_data="affiliate:stats")],
-        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
-    ])
-
-
-def affiliate_submenu_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
-    """Keyboard for Affiliate Tools submenu items (with back to affiliate tools button)."""
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton(ui_get(content, "back_to_affiliate_tools", "⬅️ Back to Affiliate Tools"), callback_data="menu:affiliate_tools")],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
     ])
 
@@ -739,6 +848,158 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     all_content = load_all_content()
     content = get_active_content(context, all_content)
     await update.message.reply_text(ui_get(content, "help_text", "Use /start to open the menu."), reply_markup=build_main_menu(content))
+
+
+async def adminstats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Admin-only command to view bot statistics."""
+    db_init()
+    
+    # Check if user is admin
+    user_id = update.effective_user.id
+    admin_ids_str = os.getenv("ADMIN_USER_IDS", "")
+    
+    if not admin_ids_str:
+        # No admins configured - silently ignore
+        return
+    
+    try:
+        admin_ids = [int(id.strip()) for id in admin_ids_str.split(",") if id.strip()]
+    except ValueError:
+        # Invalid admin IDs configured
+        return
+    
+    if user_id not in admin_ids:
+        # Not an admin - silently ignore or send unknown command
+        return
+    
+    # User is admin - generate statistics
+    stats = get_admin_statistics()
+    performers = get_top_performers(limit=10)
+    
+    # Calculate conversion rates
+    visitor_to_links = (stats["users_with_links"] / stats["total_users"] * 100) if stats["total_users"] > 0 else 0
+    visitor_to_step1 = (stats["step1_confirmed"] / stats["total_users"] * 100) if stats["total_users"] > 0 else 0
+    links_to_step1 = (stats["step1_confirmed"] / stats["users_with_links"] * 100) if stats["users_with_links"] > 0 else 0
+    
+    # Build the report
+    report = f"""📊 **Pandora AI Bot Analytics**
+Generated: {datetime.now().strftime('%b %d, %Y %I:%M %p')}
+
+{'═'*35}
+👥 **USER STATISTICS**
+{'═'*35}
+Total Unique Users: **{stats['total_users']:,}**
+├─ Generic Bot Visitors: {stats['generic_visitors']:,} ({stats['generic_visitors']/stats['total_users']*100:.0f}%)
+└─ Via Referral Link: {stats['referred_users']:,} ({stats['referred_users']/stats['total_users']*100:.0f}%)
+
+Users Who Set Links: **{stats['users_with_links']:,}** ({visitor_to_links:.1f}%)
+├─ Confirmed Step 1: {stats['step1_confirmed']:,} ({links_to_step1:.0f}%)
+└─ Acknowledged Step 2: {stats['step2_ack']:,}
+
+{'═'*35}
+🏆 **TOP 10 PERFORMERS** (by team size)
+{'═'*35}
+"""
+    
+    # Get user info for top performers
+    for i, performer in enumerate(performers, 1):
+        owner_id = performer["owner_telegram_id"]
+        try:
+            # Try to get user info from Telegram
+            user = await context.bot.get_chat(owner_id)
+            name = user.first_name or "Unknown"
+            username = f"@{user.username}" if user.username else ""
+            display_name = f"{name} {username}".strip()
+        except Exception:
+            # If we can't get info, just show ID
+            display_name = f"User {owner_id}"
+        
+        report += f"{i}. {performer['ref_code']} - {display_name}\n"
+        report += f"   • Team Size: **{performer['team_size']}**\n"
+        if i < len(performers):
+            report += "\n"
+    
+    report += f"""
+{'═'*35}
+📈 **CONVERSION RATES**
+{'═'*35}
+Visitor → Set Links: {visitor_to_links:.1f}%
+Visitor → Confirm Step 1: {visitor_to_step1:.1f}%
+Set Links → Confirm Step 1: {links_to_step1:.1f}%
+
+{'═'*35}
+📅 **RECENT ACTIVITY**
+{'═'*35}
+**Last 24 Hours:**
+• New Users: {stats['users_24h']}
+• New Link Setups: {stats['links_24h']}
+
+**Last 7 Days:**
+• New Users: {stats['users_7d']}
+• New Link Setups: {stats['links_7d']}
+
+{'─'*35}
+Updated: Just now
+"""
+    
+    # Send report to admin
+    await update.message.reply_text(report, parse_mode='Markdown')
+
+
+async def send_daily_report(context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send daily report to admin users (scheduled task)."""
+    db_init()
+    
+    # Get admin IDs
+    admin_ids_str = os.getenv("ADMIN_USER_IDS", "")
+    if not admin_ids_str:
+        return
+    
+    try:
+        admin_ids = [int(id.strip()) for id in admin_ids_str.split(",") if id.strip()]
+    except ValueError:
+        return
+    
+    # Get statistics
+    stats = get_admin_statistics()
+    
+    # Build simplified daily report
+    report = f"""📊 **Daily Pandora AI Bot Report**
+{datetime.now().strftime('%A, %B %d, %Y')}
+
+{'═'*35}
+📈 **YESTERDAY'S ACTIVITY**
+{'═'*35}
+New Users: **{stats['users_24h']}**
+New Link Setups: **{stats['links_24h']}**
+
+{'═'*35}
+📊 **CURRENT TOTALS**
+{'═'*35}
+Total Users: **{stats['total_users']:,}**
+Users with Links: **{stats['users_with_links']:,}**
+Generic Visitors: {stats['generic_visitors']:,}
+
+{'═'*35}
+📅 **WEEKLY PROGRESS**
+{'═'*35}
+New Users (7 days): **{stats['users_7d']}**
+New Links (7 days): **{stats['links_7d']}**
+
+{'─'*35}
+Use /adminstats for detailed analytics
+"""
+    
+    # Send to all admin users
+    for admin_id in admin_ids:
+        try:
+            await context.bot.send_message(
+                chat_id=admin_id,
+                text=report,
+                parse_mode='Markdown'
+            )
+        except Exception as e:
+            logger.error(f"Failed to send daily report to admin {admin_id}: {e}")
 
 
 # -----------------------------
@@ -1054,11 +1315,11 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if action == "share_invite":
         # Share invite link - requires links to be set
         if not ref:
-            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), affiliate_submenu_kb(content))
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
             return
         invite = build_invite_link(ref["ref_code"], content)
         share_text = ui_get(content, "ref_share_text", "Share your invite:\n\n{invite}").replace("{invite}", invite)
-        await safe_show_menu_message(query, context, share_text, affiliate_submenu_kb(content))
+        await safe_show_menu_message(query, context, share_text, back_to_menu_kb(content))
         return
 
     if action == "set_links":
@@ -1074,7 +1335,6 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 InlineKeyboardButton(ui_get(content, "ref_ready_yes", "✅ Yes"), callback_data="ref:ready:yes"),
                 InlineKeyboardButton(ui_get(content, "ref_ready_no", "❌ No"), callback_data="ref:ready:no"),
             ],
-            [InlineKeyboardButton(ui_get(content, "back_to_affiliate_tools", "⬅️ Back to Affiliate Tools"), callback_data="menu:affiliate_tools")],
             [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")],
         ])
         await safe_show_menu_message(query, context, question, kb)
@@ -1083,7 +1343,7 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if action == "check_links":
         # Check referral links - requires links to be set
         if not ref:
-            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), affiliate_submenu_kb(content))
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
             return
         
         step1_url = ref.get("step1_url", "Not set")
@@ -1099,13 +1359,13 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         title = ui_get(content, "my_ref_links_title", "🔍 Your Referral Links")
         full_text = f"{title}\n\n{links_text}"
         
-        await safe_show_menu_message(query, context, full_text, affiliate_submenu_kb(content))
+        await safe_show_menu_message(query, context, full_text, check_ref_links_kb(content))
         return
 
     if action == "stats":
         # Show team stats - requires links to be set
         if not ref:
-            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), affiliate_submenu_kb(content))
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
             return
         
         ref_code = ref.get("ref_code", "")
@@ -1113,20 +1373,25 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         # Get team stats
         stats = get_team_stats(ref_code)
         
+        # Build invite link
+        invite_link = build_invite_link(ref_code, content)
+        
         # Determine growth message
         if stats["total_team"] > 0:
             growth_message = ui_get(content, "my_team_stats_growth", "📈 Your team is growing! Keep sharing!")
         else:
             growth_message = ui_get(content, "my_team_stats_no_team", "No one has used your invite link yet. Share it to start building your team! 🚀")
         
-        # Build stats text (note: no longer using ref_code and invite_link placeholders)
+        # Build stats text
         stats_template = ui_get(
             content,
             "my_team_stats_text",
-            "**👥 Team Overview:**\nPeople who used your link: {total_team}"
+            "Your Ref Code: {ref_code}\nPeople who used your link: {total_team}"
         )
         
-        stats_text = stats_template.replace("{total_team}", str(stats["total_team"])) \
+        stats_text = stats_template.replace("{ref_code}", ref_code) \
+                                    .replace("{invite_link}", invite_link) \
+                                    .replace("{total_team}", str(stats["total_team"])) \
                                     .replace("{team_with_links}", str(stats["team_with_links"])) \
                                     .replace("{team_step1_confirmed}", str(stats["team_step1_confirmed"])) \
                                     .replace("{growth_message}", growth_message)
@@ -1134,7 +1399,7 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         title = ui_get(content, "my_team_stats_title", "📊 Your Pandora AI Bot Link Stats")
         full_text = f"{title}\n\n{stats_text}"
         
-        await safe_show_menu_message(query, context, full_text, affiliate_submenu_kb(content))
+        await safe_show_menu_message(query, context, full_text, back_to_menu_kb(content))
         return
 
     await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), back_to_menu_kb(content))
@@ -1494,6 +1759,7 @@ def main() -> None:
 
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
+    app.add_handler(CommandHandler("adminstats", adminstats_cmd))
 
     app.add_handler(CommandHandler("reset", reset_cmd))
 
@@ -1507,6 +1773,20 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(on_faq_click, pattern=r"^(faq_topic:|faq_q:|faq_back_|faq_search:)"))
 
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, on_text_message))
+
+    # Schedule daily report at 9:00 AM (UTC)
+    # Admins can configure DAILY_REPORT_HOUR in environment (default: 9)
+    report_hour = int(os.getenv("DAILY_REPORT_HOUR", "9"))
+    job_queue = app.job_queue
+    if job_queue:
+        # Schedule daily report
+        from datetime import time
+        job_queue.run_daily(
+            send_daily_report,
+            time=time(hour=report_hour, minute=0, second=0),
+            name="daily_report"
+        )
+        logger.info(f"Daily report scheduled for {report_hour:02d}:00 UTC")
 
     logger.info("Bot is starting...")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
