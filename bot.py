@@ -863,6 +863,103 @@ async def safe_show_menu_message(query, context: ContextTypes.DEFAULT_TYPE, text
         await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
 
 
+def get_sponsor_welcome_stats(sponsor_code: str) -> Optional[Dict[str, Any]]:
+    """Get sponsor stats for personalized welcome message."""
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    # Get sponsor info
+    cur.execute("SELECT owner_telegram_id FROM referrers WHERE ref_code = ?", (sponsor_code,))
+    sponsor = cur.fetchone()
+    
+    if not sponsor:
+        conn.close()
+        return None
+    
+    owner_id = sponsor["owner_telegram_id"]
+    
+    # Get team size (total who clicked this sponsor's link)
+    cur.execute("SELECT COUNT(*) as count FROM users WHERE sponsor_code = ?", (sponsor_code,))
+    team_size = cur.fetchone()["count"]
+    
+    # Get team with links (people positioned for affiliate income)
+    cur.execute("""
+        SELECT COUNT(*) as count FROM users u
+        LEFT JOIN referrers r ON u.telegram_user_id = r.owner_telegram_id
+        WHERE u.sponsor_code = ? AND r.ref_code IS NOT NULL
+    """, (sponsor_code,))
+    team_with_links = cur.fetchone()["count"]
+    
+    conn.close()
+    
+    return {
+        "owner_telegram_id": owner_id,
+        "team_size": team_size,
+        "team_with_links": team_with_links
+    }
+
+
+async def build_personalized_welcome(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    content: Dict[str, Any],
+    sponsor_code: Optional[str]
+) -> str:
+    """Build personalized welcome message based on sponsor's team size."""
+    
+    # Get new user's first name
+    first_name = update.effective_user.first_name or ""
+    first_name_with_comma = f", {first_name}" if first_name else ""
+    
+    # No sponsor - generic welcome
+    if not sponsor_code:
+        template = ui_get(content, "welcome_generic", "Welcome!")
+        return template.replace("{first_name_with_comma}", first_name_with_comma).replace("{first_name}", first_name or "there")
+    
+    # Get sponsor stats
+    stats = get_sponsor_welcome_stats(sponsor_code)
+    
+    if not stats:
+        # Invalid sponsor code - generic welcome
+        template = ui_get(content, "welcome_generic", "Welcome!")
+        return template.replace("{first_name_with_comma}", first_name_with_comma).replace("{first_name}", first_name or "there")
+    
+    # Get sponsor's Telegram info
+    try:
+        sponsor_user = await context.bot.get_chat(stats["owner_telegram_id"])
+        sponsor_first_name = sponsor_user.first_name or "Your sponsor"
+        sponsor_last_name = sponsor_user.last_name or ""
+        sponsor_username = f"@{sponsor_user.username}" if sponsor_user.username else ""
+        
+        # Build full name
+        sponsor_name = sponsor_first_name
+        if sponsor_last_name:
+            sponsor_name += f" {sponsor_last_name}"
+        if sponsor_username:
+            sponsor_name += f" {sponsor_username}"
+    except Exception:
+        sponsor_first_name = "Your sponsor"
+        sponsor_name = "Your sponsor"
+    
+    # Choose template based on team_with_links count
+    if stats["team_with_links"] >= 10:
+        # Large team - show stats
+        template = ui_get(content, "welcome_large_team", "Welcome!")
+        message = template.replace("{first_name}", first_name or "there")
+        message = message.replace("{sponsor_name}", sponsor_name)
+        message = message.replace("{sponsor_first_name}", sponsor_first_name)
+        message = message.replace("{team_with_links}", str(stats["team_with_links"]))
+        message = message.replace("{team_size}", str(stats["team_size"]))
+    else:
+        # Small team - encouraging message
+        template = ui_get(content, "welcome_small_team", "Welcome!")
+        message = template.replace("{first_name}", first_name or "there")
+        message = message.replace("{sponsor_name}", sponsor_name)
+        message = message.replace("{sponsor_first_name}", sponsor_first_name)
+    
+    return message
+
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db_init()
     all_content = load_all_content()
@@ -888,7 +985,11 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     content = get_active_content(context, all_content)
     context.user_data["faq_search_mode"] = False
-    await update.message.reply_text(content.get("welcome_message", "Welcome!"), reply_markup=build_main_menu(content))
+    
+    # Build personalized welcome message
+    welcome_message = await build_personalized_welcome(update, context, content, sponsor_code)
+    
+    await update.message.reply_text(welcome_message, reply_markup=build_main_menu(content))
 
 
 async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
