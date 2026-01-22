@@ -660,6 +660,14 @@ def back_to_menu_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([[InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]])
 
 
+def sharing_tools_submenu_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Keyboard with 'Back to Sharing Tools' and 'Back to menu' buttons."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "back_to_sharing_tools", "⬅️ Back to Sharing Tools"), callback_data="menu:affiliate_tools")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
 def links_list_kb(content: Dict[str, Any], items: List[Dict[str, str]], back_target: str) -> InlineKeyboardMarkup:
     keyboard: List[List[InlineKeyboardButton]] = []
     for item in items:
@@ -696,6 +704,7 @@ def check_ref_links_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     """Keyboard for Check My Referral Links screen with share button."""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(ui_get(content, "share_invite_btn", "📤 Share My Invite Link"), callback_data="invite:share")],
+        [InlineKeyboardButton(ui_get(content, "back_to_sharing_tools", "⬅️ Back to Sharing Tools"), callback_data="menu:affiliate_tools")],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
     ])
 
@@ -1565,11 +1574,11 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if action == "share_invite":
         # Share invite link - requires links to be set
         if not ref:
-            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), sharing_tools_submenu_kb(content))
             return
         invite = build_invite_link(ref["ref_code"], content)
         share_text = ui_get(content, "ref_share_text", "Share your invite:\n\n{invite}").replace("{invite}", invite)
-        await safe_show_menu_message(query, context, share_text, back_to_menu_kb(content))
+        await safe_show_menu_message(query, context, share_text, sharing_tools_submenu_kb(content))
         return
 
     if action == "set_links":
@@ -1585,6 +1594,7 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 InlineKeyboardButton(ui_get(content, "ref_ready_yes", "✅ Yes"), callback_data="ref:ready:yes"),
                 InlineKeyboardButton(ui_get(content, "ref_ready_no", "❌ No"), callback_data="ref:ready:no"),
             ],
+            [InlineKeyboardButton(ui_get(content, "back_to_sharing_tools", "⬅️ Back to Sharing Tools"), callback_data="menu:affiliate_tools")],
             [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")],
         ])
         await safe_show_menu_message(query, context, question, kb)
@@ -1593,7 +1603,7 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if action == "check_links":
         # Check referral links - requires links to be set
         if not ref:
-            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), sharing_tools_submenu_kb(content))
             return
         
         step1_url = ref.get("step1_url", "Not set")
@@ -1615,7 +1625,7 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
     if action == "stats":
         # Show team stats - requires links to be set
         if not ref:
-            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
+            await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), sharing_tools_submenu_kb(content))
             return
         
         ref_code = ref.get("ref_code", "")
@@ -1649,7 +1659,7 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         title = ui_get(content, "my_team_stats_title", "📊 Your Pandora AI Bot Link Stats")
         full_text = f"{title}\n\n{stats_text}"
         
-        await safe_show_menu_message(query, context, full_text, back_to_menu_kb(content))
+        await safe_show_menu_message(query, context, full_text, sharing_tools_submenu_kb(content))
         return
 
     await safe_show_menu_message(query, context, ui_get(content, "unknown_option", "Unknown option."), back_to_menu_kb(content))
