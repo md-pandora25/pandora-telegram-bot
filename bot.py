@@ -1027,7 +1027,7 @@ def team_comparison_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
 
 
 def my_actions_kb(content: Dict[str, Any], ref_code: str, actions: List[str]) -> InlineKeyboardMarkup:
-    """My Actions screen with dynamic action buttons."""
+    """My Actions screen with dynamic action buttons for all 9 suggestion types."""
     buttons = []
     
     for action in actions:
@@ -1037,6 +1037,18 @@ def my_actions_kb(content: Dict[str, Any], ref_code: str, actions: List[str]) ->
             buttons.append([InlineKeyboardButton(ui_get(content, "btn_share_invite", "📤 Share Invite Link"), callback_data="affiliate:share_invite")])
         elif action == "streak":
             buttons.append([InlineKeyboardButton(ui_get(content, "btn_come_back", "🔥 Come Back Tomorrow"), callback_data="action:streak_reminder")])
+        elif action == "quality":
+            buttons.append([InlineKeyboardButton(ui_get(content, "btn_conversion_tips", "📚 Learn Conversion Tips"), callback_data="action:conversion_tips")])
+        elif action == "milestone":
+            buttons.append([InlineKeyboardButton(ui_get(content, "btn_share_to_goal", "📤 Share to Reach Goal"), callback_data="affiliate:share_invite")])
+        elif action == "reengage":
+            buttons.append([InlineKeyboardButton(ui_get(content, "btn_reengage_message", "📧 Send Re-engagement Message"), callback_data=f"action:reengage:{ref_code}")])
+        elif action == "celebrate":
+            buttons.append([InlineKeyboardButton(ui_get(content, "btn_share_achievement", "📣 Share Achievement"), callback_data="affiliate:share_invite")])
+        elif action == "weekly_goal":
+            buttons.append([InlineKeyboardButton(ui_get(content, "btn_set_goal", "⚡ Set Weekly Goal"), callback_data="action:weekly_goal")])
+        elif action == "best_time":
+            buttons.append([InlineKeyboardButton(ui_get(content, "btn_set_reminder", "⏰ Set Reminder"), callback_data="action:best_time")])
     
     buttons.append([InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")])
     buttons.append([InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")])
@@ -2449,28 +2461,12 @@ async def on_mystats_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await show_team_comparison(query, context, content, user_id)
     
     elif action == "actions":
-        # My Actions - Coming Soon
-        await safe_show_menu_message(
-            query,
-            context,
-            "⚡ MY ACTIONS\n\n🚧 Coming soon!\n\nThis feature is being built and will be available shortly.",
-            InlineKeyboardMarkup([
-                [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")],
-                [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
-            ])
-        )
+        # My Actions screen
+        await show_my_actions(query, context, content, user_id)
     
     elif action == "milestones":
-        # My Milestones - Coming Soon
-        await safe_show_menu_message(
-            query,
-            context,
-            "🎖️ MY MILESTONES\n\n🚧 Coming soon!\n\nThis feature is being built and will be available shortly.",
-            InlineKeyboardMarkup([
-                [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")],
-                [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
-            ])
-        )
+        # My Milestones screen
+        await show_my_milestones(query, context, content, user_id)
 
 
 async def show_mystats_hub(query, context, content):
@@ -2895,9 +2891,514 @@ async def show_team_comparison(query, context, content, user_id: int):
 
 
 async def on_action_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handle action button clicks (placeholder for Stage 2)."""
+    """Handle action button clicks for all 9 suggestion types."""
     query = update.callback_query
-    await query.answer("This feature is coming in the next update!", show_alert=True)
+    await query.answer()
+    
+    all_content = load_all_content()
+    content_obj = get_active_content(context, all_content)
+    
+    data = query.data or ""
+    parts = data.split(":", 2)
+    
+    if len(parts) < 2:
+        return
+    
+    action_type = parts[1]
+    
+    if action_type == "followup":
+        # Show follow-up template
+        if len(parts) >= 3:
+            ref_code = parts[2]
+            await show_followup_template(query, context, content_obj, ref_code)
+    
+    elif action_type == "streak_reminder":
+        # Show streak reminder
+        await show_streak_reminder(query, context, content_obj)
+    
+    elif action_type == "conversion_tips":
+        # Show conversion tips
+        await show_conversion_tips(query, context, content_obj)
+    
+    elif action_type == "reengage":
+        # Show re-engagement template
+        if len(parts) >= 3:
+            ref_code = parts[2]
+            await show_reengage_template(query, context, content_obj, ref_code)
+    
+    elif action_type == "weekly_goal":
+        # Show weekly goal setter (placeholder for now)
+        await query.answer("Weekly goal setting coming soon! 🎯", show_alert=True)
+    
+    elif action_type == "best_time":
+        # Show best time reminder (placeholder for now)
+        await query.answer("Reminder feature coming soon! ⏰", show_alert=True)
+
+
+async def show_my_actions(query, context, content, user_id: int):
+    """Show My Actions screen with TOP 3 most impactful smart suggestions."""
+    stats = get_personal_stats(user_id)
+    
+    if not stats:
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "ref_not_set", "Set your links first."),
+            sharing_tools_submenu_kb(content)
+        )
+        return
+    
+    # Get platform averages for comparison
+    avg_stats = get_average_stats()
+    
+    # Build ALL 9 suggestions with impact scores
+    all_suggestions = []
+    
+    # 1. CONVERT VISITORS TO MEMBERS (High Impact if < 80% conversion)
+    if stats["conversion"] < 80:
+        unconverted = stats["visitors"] - stats["active_members"]
+        if unconverted > 0:
+            # Impact: Higher if more unconverted AND lower conversion
+            impact = unconverted * (100 - stats["conversion"]) / 100
+            all_suggestions.append({
+                "type": "convert",
+                "impact": impact,
+                "text": ui_get(content, "action_convert_visitors", "📧 Convert Visitors to Members\n{count} visitors haven't become members yet").replace("{count}", str(unconverted)),
+                "button": "btn_send_followup"
+            })
+    
+    # 2. CLIMB LEADERBOARD (Medium-High Impact if not #1)
+    if stats["rank"] > 1:
+        # Impact: Higher if closer to top
+        impact = 100 - stats["percentile"]
+        next_rank = stats["rank"] - 1
+        all_suggestions.append({
+            "type": "climb",
+            "impact": impact,
+            "text": ui_get(content, "action_climb_leaderboard", "🎯 Climb the Leaderboard\nYou're close to #{rank} rank").replace("{rank}", str(next_rank)),
+            "button": "btn_share_invite"
+        })
+    
+    # 3. MAINTAIN/START STREAK (Medium Impact - habit building)
+    if stats["streak"] > 0:
+        # Impact: Higher with longer streaks (don't want to break)
+        impact = min(stats["streak"] * 5, 60)
+        all_suggestions.append({
+            "type": "streak",
+            "impact": impact,
+            "text": ui_get(content, "action_maintain_streak", "🔥 Maintain Your Streak\n{days} days active - keep it going!").replace("{days}", str(stats["streak"])),
+            "button": "btn_come_back"
+        })
+    else:
+        # Starting streak has medium impact
+        all_suggestions.append({
+            "type": "streak",
+            "impact": 40,
+            "text": ui_get(content, "action_start_streak", "🔥 Start Your Streak\nBuild consistency - come back daily!"),
+            "button": "btn_come_back"
+        })
+    
+    # 4. QUALITY FOCUS (High Impact if significantly below average)
+    if stats["conversion"] < avg_stats["avg_conversion"]:
+        conversion_gap = avg_stats["avg_conversion"] - stats["conversion"]
+        if conversion_gap >= 10:  # At least 10% below average
+            # Impact: Higher the bigger the gap
+            impact = conversion_gap * 2
+            all_suggestions.append({
+                "type": "quality",
+                "impact": impact,
+                "text": ui_get(content, "action_quality_focus", "🎯 Improve Your Conversion\nYour conversion is {conversion}% - platform average is {average}%").replace("{conversion}", str(stats["conversion"])).replace("{average}", str(avg_stats["avg_conversion"])),
+                "button": "btn_conversion_tips"
+            })
+    
+    # 5. REACH NEXT MILESTONE (Very High Impact if within 5 of milestone)
+    milestones = [10, 25, 50, 100, 250, 500]
+    for milestone in milestones:
+        if stats["visitors"] < milestone:
+            gap = milestone - stats["visitors"]
+            if gap <= 5:
+                # Impact: Very high when close to milestone
+                impact = 100 - (gap * 10)
+                unit = ui_get(content, "visitors_unit", "visitors")
+                all_suggestions.append({
+                    "type": "milestone",
+                    "impact": impact,
+                    "text": ui_get(content, "action_reach_milestone", "🎖️ Almost There!\nJust {gap} more {unit} to reach {milestone} milestone").replace("{gap}", str(gap)).replace("{unit}", unit).replace("{milestone}", str(milestone)),
+                    "button": "btn_share_to_goal"
+                })
+            break
+    
+    # 6. RE-ENGAGE INACTIVE MEMBERS (Medium-High if has inactive)
+    if stats["visitors"] > stats["active_members"]:
+        inactive_estimate = int((stats["visitors"] - stats["active_members"]) * 0.7)
+        if inactive_estimate >= 5:
+            # Impact: Higher with more inactive
+            impact = min(inactive_estimate * 3, 75)
+            all_suggestions.append({
+                "type": "reengage",
+                "impact": impact,
+                "text": ui_get(content, "action_reengage", "💌 Re-engage Inactive Members\n{count} visitors haven't checked in this week").replace("{count}", str(inactive_estimate)),
+                "button": "btn_reengage_message"
+            })
+    
+    # 7. CELEBRATE RECENT WIN (High Impact if just achieved something)
+    recent_achievement = None
+    if stats["rank"] <= 10:
+        recent_achievement = f"#{stats['rank']} rank"
+    elif stats["visitors"] in [10, 25, 50, 100]:
+        recent_achievement = f"{stats['visitors']} visitors"
+    
+    if recent_achievement:
+        # Impact: High for celebrations (motivational)
+        impact = 80
+        all_suggestions.append({
+            "type": "celebrate",
+            "impact": impact,
+            "text": ui_get(content, "action_celebrate", "🎉 Celebrate Your Win!\nYou just reached {achievement} - share your success!").replace("{achievement}", recent_achievement),
+            "button": "btn_share_achievement"
+        })
+    
+    # 8. WEEKLY GOAL SETTING (Medium Impact - planning)
+    if stats["growth"]["has_time_data"]:
+        last_week_growth = stats["growth"]["members_7d"]
+        # Impact: Medium for goal setting
+        impact = 50
+        all_suggestions.append({
+            "type": "weekly_goal",
+            "impact": impact,
+            "text": ui_get(content, "action_weekly_goal", "🎯 Set This Week's Goal\nLast week: +{last_week} members. What's your goal this week?").replace("{last_week}", str(last_week_growth)),
+            "button": "btn_set_goal"
+        })
+    
+    # 9. BEST TIME TO SHARE (Low-Medium Impact - optimization)
+    # Simplified: assume 6-9 PM is best time
+    impact = 35
+    all_suggestions.append({
+        "type": "best_time",
+        "impact": impact,
+        "text": ui_get(content, "action_best_time", "⏰ Prime Sharing Time\nYour team is most active {time_range} - share then!").replace("{time_range}", "6-9 PM"),
+        "button": "btn_set_reminder"
+    })
+    
+    # SORT BY IMPACT AND TAKE TOP 3
+    all_suggestions.sort(key=lambda x: x["impact"], reverse=True)
+    top_suggestions = all_suggestions[:3]
+    
+    # Build display
+    sections = []
+    actions_list = []
+    
+    sections.append(ui_get(content, "my_actions_title", "⚡ MY ACTIONS\n\n💡 Suggested actions based on your stats:"))
+    sections.append("")
+    
+    for i, suggestion in enumerate(top_suggestions):
+        if i > 0:
+            sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+        sections.append("")
+        sections.append(suggestion["text"])
+        sections.append("")
+        actions_list.append(suggestion["type"])
+    
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # If no suggestions somehow, show encouragement
+    if not actions_list:
+        sections.append("")
+        sections.append(ui_get(content, "no_actions", "Great job! No urgent actions needed.\nKeep up the excellent work! 🌟"))
+    
+    # Combine all sections
+    full_text = "\n".join(sections)
+    
+    await safe_show_menu_message(query, context, full_text, my_actions_kb(content, stats["ref_code"], actions_list))
+
+
+async def show_followup_template(query, context, content, ref_code: str):
+    """Show follow-up message template."""
+    # Get invite link
+    invite_link = build_invite_link(ref_code, content)
+    
+    # Get team stats for personalization
+    team_stats = get_team_stats(ref_code)
+    
+    template_text = ui_get(content, "followup_template", "📧 FOLLOW-UP TEMPLATE")
+    template_text = template_text.replace("{count}", str(team_stats["team_with_links"]))
+    template_text = template_text.replace("{link}", invite_link)
+    
+    await safe_show_menu_message(
+        query,
+        context,
+        template_text,
+        InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 Copy Link", url=invite_link)],
+            [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:actions")],
+            [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+        ])
+    )
+
+
+async def show_streak_reminder(query, context, content):
+    """Show streak reminder message."""
+    # Get user's streak (placeholder for now)
+    days = 5  # Would get from database
+    
+    reminder_text = ui_get(content, "streak_reminder", "🔥 STREAK REMINDER")
+    reminder_text = reminder_text.replace("{days}", str(days))
+    
+    await safe_show_menu_message(
+        query,
+        context,
+        reminder_text,
+        InlineKeyboardMarkup([
+            [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:actions")],
+            [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+        ])
+    )
+
+
+async def show_conversion_tips(query, context, content):
+    """Show conversion improvement tips."""
+    tips_text = ui_get(content, "conversion_tips", "📚 CONVERSION TIPS")
+    
+    await safe_show_menu_message(
+        query,
+        context,
+        tips_text,
+        InlineKeyboardMarkup([
+            [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:actions")],
+            [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+        ])
+    )
+
+
+async def show_reengage_template(query, context, content, ref_code: str):
+    """Show re-engagement message template."""
+    # Get invite link
+    invite_link = build_invite_link(ref_code, content)
+    
+    # Get team stats for personalization
+    team_stats = get_team_stats(ref_code)
+    
+    template_text = ui_get(content, "reengage_template", "💌 RE-ENGAGEMENT TEMPLATE")
+    template_text = template_text.replace("{members}", str(team_stats["team_with_links"]))
+    template_text = template_text.replace("{link}", invite_link)
+    
+    await safe_show_menu_message(
+        query,
+        context,
+        template_text,
+        InlineKeyboardMarkup([
+            [InlineKeyboardButton("📋 Copy Link", url=invite_link)],
+            [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:actions")],
+            [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+        ])
+    )
+
+
+async def show_my_milestones(query, context, content, user_id: int):
+    """Show My Milestones screen with next milestone, achievements, and recent wins."""
+    stats = get_personal_stats(user_id)
+    
+    if not stats:
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "ref_not_set", "Set your links first."),
+            sharing_tools_submenu_kb(content)
+        )
+        return
+    
+    sections = []
+    
+    # Title
+    sections.append(ui_get(content, "my_milestones_title", "🎖️ MY MILESTONES"))
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Next Milestone Section
+    sections.append(ui_get(content, "next_milestone_section", "🎯 NEXT MILESTONE"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Find next milestone
+    milestones = [10, 25, 50, 100, 250, 500]
+    next_milestone = None
+    for ms in milestones:
+        if stats["visitors"] < ms:
+            next_milestone = ms
+            break
+    
+    if next_milestone:
+        current = stats["visitors"]
+        remaining = next_milestone - current
+        percentage = int((current / next_milestone) * 100)
+        
+        milestone_title = ui_get(content, f"milestone_{next_milestone}_members", f"{next_milestone} Team Members")
+        
+        # Determine encouragement based on percentage
+        if percentage >= 90:
+            encouragement = ui_get(content, "milestone_close", "You're so close! 🔥")
+        elif percentage >= 50:
+            encouragement = ui_get(content, "milestone_halfway", "Halfway there! 💪")
+        else:
+            encouragement = ui_get(content, "milestone_keep_going", "Keep pushing! 🚀")
+        
+        milestone_display = ui_get(content, "milestone_display", "{title}\n\nCurrent: {current} ({percent}%)\n\nJust {remaining} more! {encouragement}")
+        milestone_display = milestone_display.replace("{title}", milestone_title)
+        milestone_display = milestone_display.replace("{current}", str(current))
+        milestone_display = milestone_display.replace("{percent}", str(percentage))
+        milestone_display = milestone_display.replace("{remaining}", str(remaining))
+        milestone_display = milestone_display.replace("{encouragement}", encouragement)
+        
+        sections.append(milestone_display)
+        sections.append("")
+        
+        # Progress bar with milestone context
+        progress_bar = create_progress_bar(percentage, context="milestone")
+        sections.append(progress_bar)
+    else:
+        sections.append("🎉 You've reached all milestones! Amazing!")
+    
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Achievements Section
+    unlocked_count = 0
+    total_achievements = 15
+    
+    # Check which achievements are unlocked
+    achievements = []
+    
+    # First Steps
+    if stats["visitors"] >= 1:
+        achievements.append(("unlocked", ui_get(content, "achievement_first_steps", "✅ First Steps - Made 1st referral")))
+        unlocked_count += 1
+    
+    # Team Builder milestones
+    if stats["visitors"] >= 10:
+        achievements.append(("unlocked", ui_get(content, "achievement_team_builder_10", "✅ Team Builder - 10 members")))
+        unlocked_count += 1
+    elif stats["visitors"] >= 5:
+        progress = int((stats["visitors"] / 10) * 100)
+        achievements.append(("locked", ui_get(content, "locked_achievement", "🔒 {title} ({progress}%)").replace("{title}", "Team Builder - 10 members").replace("{progress}", str(progress))))
+    
+    if stats["visitors"] >= 25:
+        achievements.append(("unlocked", ui_get(content, "achievement_team_builder_25", "✅ Growing Strong - 25 members")))
+        unlocked_count += 1
+    elif stats["visitors"] >= 15:
+        progress = int((stats["visitors"] / 25) * 100)
+        achievements.append(("locked", ui_get(content, "locked_achievement", "🔒 {title} ({progress}%)").replace("{title}", "Growing Strong - 25 members").replace("{progress}", str(progress))))
+    
+    if stats["visitors"] >= 50:
+        achievements.append(("unlocked", ui_get(content, "achievement_team_builder_50", "✅ Power Player - 50 members")))
+        unlocked_count += 1
+    elif stats["visitors"] >= 35:
+        progress = int((stats["visitors"] / 50) * 100)
+        achievements.append(("locked", ui_get(content, "locked_achievement", "🔒 {title} ({progress}%)").replace("{title}", "Power Player - 50 members").replace("{progress}", str(progress))))
+    
+    if stats["visitors"] >= 100:
+        achievements.append(("unlocked", ui_get(content, "achievement_century_club", "✅ Century Club - 100 members")))
+        unlocked_count += 1
+    elif stats["visitors"] >= 75:
+        progress = int((stats["visitors"] / 100) * 100)
+        achievements.append(("locked", ui_get(content, "locked_achievement", "🔒 {title} ({progress}%)").replace("{title}", "Century Club - 100 members").replace("{progress}", str(progress))))
+    
+    # Ranking achievements
+    if stats["percentile"] <= 50:
+        achievements.append(("unlocked", ui_get(content, "achievement_rising_star", "✅ Rising Star - Top 50%")))
+        unlocked_count += 1
+    
+    if stats["percentile"] <= 25:
+        achievements.append(("unlocked", ui_get(content, "achievement_top_quarter", "✅ Top Performer - Top 25%")))
+        unlocked_count += 1
+    elif stats["percentile"] <= 40:
+        achievements.append(("locked", "🔒 Top Performer - Top 25%"))
+    
+    if stats["percentile"] <= 10:
+        achievements.append(("unlocked", ui_get(content, "achievement_elite_status", "✅ Elite Status - Top 10%")))
+        unlocked_count += 1
+    elif stats["percentile"] <= 20:
+        achievements.append(("locked", "🔒 Elite Status - Top 10%"))
+    
+    # Streak achievements
+    if stats["streak"] >= 7:
+        achievements.append(("unlocked", ui_get(content, "achievement_week_warrior", "✅ Week Warrior - 7-day streak")))
+        unlocked_count += 1
+    
+    if stats["streak"] >= 30:
+        achievements.append(("unlocked", ui_get(content, "achievement_month_master", "✅ Month Master - 30-day streak")))
+        unlocked_count += 1
+    
+    # Conversion achievements
+    if stats["conversion"] >= 70:
+        achievements.append(("unlocked", ui_get(content, "achievement_quality_focus", "✅ Quality Focus - 70%+ conversion")))
+        unlocked_count += 1
+    elif stats["conversion"] >= 50:
+        progress = int((stats["conversion"] / 70) * 100)
+        achievements.append(("locked", ui_get(content, "locked_achievement", "🔒 {title} ({progress}%)").replace("{title}", "Quality Focus - 70%+ conversion").replace("{progress}", str(progress))))
+    
+    if stats["conversion"] >= 90:
+        achievements.append(("unlocked", ui_get(content, "achievement_conversion_king", "✅ Conversion King - 90%+ conversion")))
+        unlocked_count += 1
+    elif stats["conversion"] >= 75:
+        progress = int((stats["conversion"] / 90) * 100)
+        achievements.append(("locked", ui_get(content, "locked_achievement", "🔒 {title} ({progress}%)").replace("{title}", "Conversion King - 90%+ conversion").replace("{progress}", str(progress))))
+    
+    # Early adopter (placeholder - would check actual join date)
+    achievements.append(("unlocked", ui_get(content, "achievement_early_adopter", "✅ Early Adopter - Joined early 2026")))
+    unlocked_count += 1
+    
+    # Consistency achievements (placeholder)
+    achievements.append(("unlocked", ui_get(content, "achievement_consistent", "✅ Consistent - 3 weeks active")))
+    unlocked_count += 1
+    
+    sections.append(ui_get(content, "achievements_section", "🏅 ACHIEVEMENTS UNLOCKED ({unlocked}/{total})").replace("{unlocked}", str(unlocked_count)).replace("{total}", str(total_achievements)))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Show achievements (up to 11 total: 8 unlocked + 3 locked)
+    shown = 0
+    for status, achievement_text in achievements:
+        if shown >= 11:
+            break
+        sections.append(achievement_text)
+        shown += 1
+    
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Recent Wins Section
+    sections.append(ui_get(content, "recent_wins_section", "🎉 RECENT WINS"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Generate recent wins based on stats
+    wins = []
+    
+    if stats["visitors"] >= 25:
+        win_text = ui_get(content, "win_reached_members", "✅ Reached {count} members ({time} ago)")
+        win_text = win_text.replace("{count}", str(stats["visitors"]))
+        win_text = win_text.replace("{time}", "recently")
+        wins.append(win_text)
+    
+    if stats["rank"] <= 50:
+        win_text = ui_get(content, "win_climbed_rank", "✅ Climbed to #{rank} rank ({time} ago)")
+        win_text = win_text.replace("{rank}", str(stats["rank"]))
+        win_text = win_text.replace("{time}", "recently")
+        wins.append(win_text)
+    
+    if stats["streak"] >= 5:
+        win_text = ui_get(content, "win_streak", "✅ {days}-day streak achieved ({time})")
+        win_text = win_text.replace("{days}", str(stats["streak"]))
+        win_text = win_text.replace("{time}", "today")
+        wins.append(win_text)
+    
+    if wins:
+        for win in wins[:3]:  # Show max 3 recent wins
+            sections.append(win)
+    else:
+        sections.append(ui_get(content, "no_recent_wins", "Keep building to unlock wins! 🚀"))
+    
+    # Combine all sections
+    full_text = "\n".join(sections)
+    
+    await safe_show_menu_message(query, context, full_text, my_milestones_kb(content))
 
 
 def create_progress_bar(percentage: int, length: int = 10, context: str = "default") -> str:
