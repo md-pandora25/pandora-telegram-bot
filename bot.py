@@ -2437,16 +2437,16 @@ async def on_mystats_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await show_activity_help(query, context, content, user_id)
     
     elif action == "team_hub":
-        # Team Stats Hub - Coming Soon
-        await safe_show_menu_message(
-            query,
-            context,
-            "👥 TEAM STATS\n\n🚧 Coming soon!\n\nThis feature is being built and will be available shortly.",
-            InlineKeyboardMarkup([
-                [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")],
-                [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
-            ])
-        )
+        # Team Stats Hub
+        await show_team_stats_hub(query, context, content)
+    
+    elif action == "team_details":
+        # Team Details screen
+        await show_team_details(query, context, content, user_id)
+    
+    elif action == "team_comparison":
+        # Team Comparison screen
+        await show_team_comparison(query, context, content, user_id)
     
     elif action == "actions":
         # My Actions - Coming Soon
@@ -2539,8 +2539,8 @@ async def show_personal_stats(query, context, content, user_id: int):
     members_text = members_text.replace("{percent}", str(stats["conversion"]))
     sections.append(members_text)
     
-    # Progress bar
-    progress_bar = create_progress_bar(stats["conversion"])
+    # Progress bar - use success context (shows mint/aqua if 60%+)
+    progress_bar = create_progress_bar(stats["conversion"], context="success")
     sections.append(progress_bar)
     
     sections.append("")
@@ -2691,16 +2691,241 @@ async def show_activity_help(query, context, content, user_id: int):
     await safe_show_menu_message(query, context, full_text, activity_help_popup_kb(content))
 
 
+async def show_team_stats_hub(query, context, content):
+    """Show Team Stats hub screen."""
+    title = ui_get(content, "team_stats_hub_title", "👥 TEAM STATS\n\nChoose a view:")
+    await safe_show_menu_message(query, context, title, team_stats_hub_kb(content))
+
+
+async def show_team_details(query, context, content, user_id: int):
+    """Show Team Details screen."""
+    stats = get_personal_stats(user_id)
+    
+    if not stats:
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "ref_not_set", "Set your links first."),
+            sharing_tools_submenu_kb(content)
+        )
+        return
+    
+    sections = []
+    
+    # Title
+    sections.append(ui_get(content, "team_details_title", "👥 TEAM DETAILS"))
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Team Composition Section
+    sections.append(ui_get(content, "team_composition_section", "👥 TEAM COMPOSITION"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Build composition display
+    comp_display = ui_get(content, "team_comp_display", "Total Visitors: {total}\nActive Members: {active} ({percent}%)")
+    
+    # Get activity breakdown (simplified for now - would need more DB queries for real data)
+    active_24h = int(stats["active_members"] * 0.3)  # Estimate: 30% active in 24h
+    recent_7d = int(stats["active_members"] * 0.5)   # Estimate: 50% active in 7d
+    inactive = stats["visitors"] - recent_7d
+    
+    comp_display = comp_display.replace("{total}", str(stats["visitors"]))
+    comp_display = comp_display.replace("{active}", str(stats["active_members"]))
+    comp_display = comp_display.replace("{percent}", str(stats["conversion"]))
+    comp_display = comp_display.replace("{active_24h}", str(active_24h))
+    comp_display = comp_display.replace("{recent_7d}", str(recent_7d))
+    comp_display = comp_display.replace("{inactive}", str(inactive))
+    comp_display = comp_display.replace("{conversion}", str(stats["conversion"]))
+    
+    sections.append(comp_display)
+    
+    # Progress bar for conversion
+    progress_bar = create_progress_bar(stats["conversion"], context="success")
+    sections.append(progress_bar)
+    
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Team Activity Section
+    sections.append(ui_get(content, "team_activity_section", "👥 RECENT TEAM ACTIVITY"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Simplified activity feed (would need actual activity log for real data)
+    if stats["growth"]["has_time_data"] and stats["growth"]["members_7d"] > 0:
+        activity_text = ui_get(content, "became_member", "• {name} became a member ({time} ago) 🟢")
+        activity_text = activity_text.replace("{name}", "Team member")
+        activity_text = activity_text.replace("{time}", "recently")
+        sections.append(activity_text)
+        sections.append(f"• {stats['growth']['members_7d']} new members this week 🟢")
+    else:
+        sections.append(ui_get(content, "no_activity", "No recent activity to show."))
+    
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Team Quality Section
+    sections.append(ui_get(content, "team_quality_section", "👥 TEAM QUALITY"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    quality_display = ui_get(content, "quality_display", "Active Members: {active}/{total} ({percent}%)\n\nQuality Score: {stars} ({score}/5)")
+    quality_display = quality_display.replace("{active}", str(stats["active_members"]))
+    quality_display = quality_display.replace("{total}", str(stats["visitors"]))
+    quality_display = quality_display.replace("{percent}", str(stats["conversion"]))
+    quality_display = quality_display.replace("{stars}", stats["activity_stars"])
+    quality_display = quality_display.replace("{score}", f"{stats['activity_score']:.1f}")
+    
+    sections.append(quality_display)
+    
+    # Progress bar for quality
+    progress_bar = create_progress_bar(stats["conversion"], context="success")
+    sections.append(progress_bar)
+    
+    # Combine all sections
+    full_text = "\n".join(sections)
+    
+    await safe_show_menu_message(query, context, full_text, team_details_kb(content))
+
+
+async def show_team_comparison(query, context, content, user_id: int):
+    """Show Team Comparison screen."""
+    stats = get_personal_stats(user_id)
+    
+    if not stats:
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "ref_not_set", "Set your links first."),
+            sharing_tools_submenu_kb(content)
+        )
+        return
+    
+    # Get platform averages
+    avg_stats = get_average_stats()
+    top10_stats = get_top10_stats()
+    
+    sections = []
+    
+    # Title
+    sections.append(ui_get(content, "team_comparison_title", "📊 TEAM COMPARISON"))
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # VS Average Section
+    sections.append(ui_get(content, "vs_average_section", "📊 VS AVERAGE AFFILIATE"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Calculate differences
+    visitors_diff = stats["visitors"] - avg_stats["avg_visitors"]
+    visitors_percent = int((visitors_diff / avg_stats["avg_visitors"] * 100)) if avg_stats["avg_visitors"] > 0 else 0
+    
+    members_diff = stats["active_members"] - avg_stats["avg_members"]
+    members_percent = int((members_diff / avg_stats["avg_members"] * 100)) if avg_stats["avg_members"] > 0 else 0
+    
+    # Determine above/below
+    above_below_visitors = ui_get(content, "above", "above") if visitors_diff >= 0 else ui_get(content, "below", "below")
+    above_below_members = ui_get(content, "above", "above") if members_diff >= 0 else ui_get(content, "below", "below")
+    
+    emoji_visitors = "🔥" if visitors_diff >= 0 else "📊"
+    emoji_members = "🔥" if members_diff >= 0 else "📊"
+    
+    vs_avg_display = ui_get(content, "vs_average_display", "Your Visitors: {your_visitors}\nAverage: {avg_visitors} visitors")
+    vs_avg_display = vs_avg_display.replace("{your_visitors}", str(stats["visitors"]))
+    vs_avg_display = vs_avg_display.replace("{avg_visitors}", str(avg_stats["avg_visitors"]))
+    vs_avg_display = vs_avg_display.replace("{percent_visitors}", str(abs(visitors_percent)))
+    vs_avg_display = vs_avg_display.replace("{above_below}", above_below_visitors)
+    vs_avg_display = vs_avg_display.replace("{emoji_visitors}", emoji_visitors)
+    vs_avg_display = vs_avg_display.replace("{your_members}", str(stats["active_members"]))
+    vs_avg_display = vs_avg_display.replace("{your_conversion}", str(stats["conversion"]))
+    vs_avg_display = vs_avg_display.replace("{avg_members}", str(avg_stats["avg_members"]))
+    vs_avg_display = vs_avg_display.replace("{avg_conversion}", str(avg_stats["avg_conversion"]))
+    vs_avg_display = vs_avg_display.replace("{percent_members}", str(abs(members_percent)))
+    vs_avg_display = vs_avg_display.replace("{above_below_members}", above_below_members)
+    vs_avg_display = vs_avg_display.replace("{emoji_members}", emoji_members)
+    
+    sections.append(vs_avg_display)
+    
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # VS Top 10% Section
+    sections.append(ui_get(content, "vs_top10_section", "📊 VS TOP 10%"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Calculate gap to top 10%
+    visitors_gap = top10_stats["top10_visitors"] - stats["visitors"]
+    members_gap = top10_stats["top10_members"] - stats["active_members"]
+    
+    visitors_progress = int((stats["visitors"] / top10_stats["top10_visitors"] * 100)) if top10_stats["top10_visitors"] > 0 else 0
+    members_progress = int((stats["active_members"] / top10_stats["top10_members"] * 100)) if top10_stats["top10_members"] > 0 else 0
+    
+    # Check if already in top 10%
+    if visitors_progress >= 100:
+        encouragement = ui_get(content, "youre_in_top10", "You're in the top 10%! Amazing! 🔥")
+    else:
+        encouragement = ui_get(content, "keep_building", "Keep building! 💪")
+    
+    vs_top10_display = ui_get(content, "vs_top10_display", "Top 10% Average: {top_visitors} visitors\nYour Visitors: {your_visitors}")
+    vs_top10_display = vs_top10_display.replace("{top_visitors}", str(top10_stats["top10_visitors"]))
+    vs_top10_display = vs_top10_display.replace("{your_visitors}", str(stats["visitors"]))
+    vs_top10_display = vs_top10_display.replace("{gap_visitors}", str(max(0, visitors_gap)))
+    vs_top10_display = vs_top10_display.replace("{percent_visitors}", str(min(100, visitors_progress)))
+    vs_top10_display = vs_top10_display.replace("{top_members}", str(top10_stats["top10_members"]))
+    vs_top10_display = vs_top10_display.replace("{your_members}", str(stats["active_members"]))
+    vs_top10_display = vs_top10_display.replace("{gap_members}", str(max(0, members_gap)))
+    vs_top10_display = vs_top10_display.replace("{percent_members}", str(min(100, members_progress)))
+    vs_top10_display = vs_top10_display.replace("{encouragement}", encouragement)
+    
+    sections.append(vs_top10_display)
+    
+    # Progress bars for gaps
+    sections.append("")
+    sections.append("Visitors Progress:")
+    progress_bar = create_progress_bar(min(100, visitors_progress))
+    sections.append(progress_bar)
+    
+    sections.append("")
+    sections.append("Members Progress:")
+    progress_bar = create_progress_bar(min(100, members_progress))
+    sections.append(progress_bar)
+    
+    # Combine all sections
+    full_text = "\n".join(sections)
+    
+    await safe_show_menu_message(query, context, full_text, team_comparison_kb(content))
+
+
 async def on_action_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle action button clicks (placeholder for Stage 2)."""
     query = update.callback_query
     await query.answer("This feature is coming in the next update!", show_alert=True)
 
 
-def create_progress_bar(percentage: int, length: int = 10) -> str:
-    """Create a visual progress bar."""
+def create_progress_bar(percentage: int, length: int = 10, context: str = "default") -> str:
+    """
+    Create a visual progress bar using Pandora AI brand colors.
+    
+    Colors:
+    - Ocean Blue (🟦) = #0b87ba - Primary/trust/foundation
+    - Mint/Aqua (🟩) = #8fe1cc - Success/achievement/growth
+    
+    Context options:
+    - "default" = Ocean Blue for standard progress
+    - "success" = Mint/Aqua for high performance (60%+)
+    - "milestone" = Mint if ≥80%, else Blue
+    """
     filled = int((percentage / 100) * length)
-    bar = "▓" * filled + "░" * (length - filled)
+    
+    # Choose color based on context and value
+    if context == "success" and percentage >= 60:
+        # Mint/Aqua for high performance (represented as green 🟩)
+        bar = "🟩" * filled + "⬜" * (length - filled)
+    elif context == "milestone" and percentage >= 80:
+        # Mint/Aqua for near-complete milestones
+        bar = "🟩" * filled + "⬜" * (length - filled)
+    else:
+        # Ocean Blue for standard progress
+        bar = "🟦" * filled + "⬜" * (length - filled)
+    
     return f"{bar} {percentage}%"
 
 
