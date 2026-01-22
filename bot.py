@@ -374,6 +374,317 @@ def get_team_stats(ref_code: str) -> Dict[str, Any]:
     }
 
 
+def calculate_activity_score(visitors: int, active_members: int) -> Tuple[float, str]:
+    """
+    Calculate activity score (0-5 stars) based on conversion rate and team size.
+    Returns (score, stars_display)
+    """
+    # Member conversion rate score (0-3 stars)
+    conversion_rate = (active_members / visitors * 100) if visitors > 0 else 0
+    if conversion_rate >= 60:
+        conversion_stars = 3.0
+    elif conversion_rate >= 40:
+        conversion_stars = 2.0
+    elif conversion_rate >= 20:
+        conversion_stars = 1.0
+    else:
+        conversion_stars = 0.0
+    
+    # Team size bonus (0-2 stars)
+    if visitors >= 50:
+        size_stars = 2.0
+    elif visitors >= 30:
+        size_stars = 1.5
+    elif visitors >= 20:
+        size_stars = 1.0
+    else:
+        size_stars = 0.0
+    
+    total_score = conversion_stars + size_stars
+    
+    # Generate star display
+    full_stars = int(total_score)
+    has_half = (total_score % 1) >= 0.5
+    
+    stars = "⭐" * full_stars
+    if has_half:
+        stars += "½"
+    
+    return (total_score, stars)
+
+
+def get_user_rank(user_id: int) -> Dict[str, Any]:
+    """Get user's rank among all affiliates."""
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    # Get user's ref code
+    cur.execute("SELECT ref_code FROM referrers WHERE owner_telegram_id = ?", (user_id,))
+    user_ref = cur.fetchone()
+    
+    if not user_ref:
+        conn.close()
+        return {"rank": 0, "total": 0, "percentile": 0}
+    
+    user_ref_code = user_ref["ref_code"]
+    
+    # Get user's team size
+    cur.execute("SELECT COUNT(*) as count FROM users WHERE sponsor_code = ?", (user_ref_code,))
+    user_team_size = cur.fetchone()["count"]
+    
+    # Count total affiliates
+    cur.execute("SELECT COUNT(DISTINCT ref_code) as count FROM referrers")
+    total_affiliates = cur.fetchone()["count"]
+    
+    # Count how many have larger teams
+    cur.execute("""
+        SELECT COUNT(DISTINCT sponsor_code) as count
+        FROM users
+        WHERE sponsor_code IS NOT NULL
+        GROUP BY sponsor_code
+        HAVING COUNT(*) > ?
+    """, (user_team_size,))
+    
+    better_count = len(cur.fetchall())
+    rank = better_count + 1
+    
+    percentile = int((rank / total_affiliates * 100)) if total_affiliates > 0 else 0
+    
+    conn.close()
+    
+    return {
+        "rank": rank,
+        "total": total_affiliates,
+        "percentile": percentile,
+        "team_size": user_team_size
+    }
+
+
+def get_growth_stats(ref_code: str) -> Dict[str, Any]:
+    """Get growth statistics for the last week and month."""
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    # Check if created_at column exists
+    cur.execute("PRAGMA table_info(users)")
+    columns = [row["name"] for row in cur.fetchall()]
+    has_created_at = "created_at" in columns
+    
+    stats = {
+        "visitors_7d": 0,
+        "members_7d": 0,
+        "visitors_30d": 0,
+        "members_30d": 0,
+        "has_time_data": has_created_at
+    }
+    
+    if not has_created_at:
+        conn.close()
+        return stats
+    
+    try:
+        # Visitors in last 7 days
+        cur.execute("""
+            SELECT COUNT(*) as count FROM users
+            WHERE sponsor_code = ?
+            AND created_at IS NOT NULL
+            AND datetime(created_at) > datetime('now', '-7 days')
+        """, (ref_code,))
+        stats["visitors_7d"] = cur.fetchone()["count"]
+        
+        # Members (set links) in last 7 days
+        cur.execute("""
+            SELECT COUNT(*) as count FROM referrers
+            WHERE created_at IS NOT NULL
+            AND datetime(created_at) > datetime('now', '-7 days')
+            AND owner_telegram_id IN (
+                SELECT telegram_user_id FROM users WHERE sponsor_code = ?
+            )
+        """, (ref_code,))
+        stats["members_7d"] = cur.fetchone()["count"]
+        
+        # Visitors in last 30 days
+        cur.execute("""
+            SELECT COUNT(*) as count FROM users
+            WHERE sponsor_code = ?
+            AND created_at IS NOT NULL
+            AND datetime(created_at) > datetime('now', '-30 days')
+        """, (ref_code,))
+        stats["visitors_30d"] = cur.fetchone()["count"]
+        
+        # Members in last 30 days
+        cur.execute("""
+            SELECT COUNT(*) as count FROM referrers
+            WHERE created_at IS NOT NULL
+            AND datetime(created_at) > datetime('now', '-30 days')
+            AND owner_telegram_id IN (
+                SELECT telegram_user_id FROM users WHERE sponsor_code = ?
+            )
+        """, (ref_code,))
+        stats["members_30d"] = cur.fetchone()["count"]
+        
+    except Exception:
+        pass
+    
+    conn.close()
+    return stats
+
+
+def get_user_streak(user_id: int) -> int:
+    """Get user's current streak (consecutive days active)."""
+    # TODO: Implement streak tracking with activity log table
+    # For now, return 0 (placeholder)
+    return 0
+
+
+def get_average_stats() -> Dict[str, Any]:
+    """Get average statistics across all affiliates."""
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    # Get all referrers
+    cur.execute("SELECT ref_code FROM referrers")
+    all_refs = cur.fetchall()
+    
+    if not all_refs:
+        conn.close()
+        return {
+            "avg_visitors": 0,
+            "avg_members": 0,
+            "avg_conversion": 0
+        }
+    
+    total_visitors = 0
+    total_members = 0
+    
+    for ref in all_refs:
+        ref_code = ref["ref_code"]
+        
+        # Count visitors
+        cur.execute("SELECT COUNT(*) as count FROM users WHERE sponsor_code = ?", (ref_code,))
+        total_visitors += cur.fetchone()["count"]
+        
+        # Count members
+        cur.execute("""
+            SELECT COUNT(*) as count FROM users u
+            INNER JOIN referrers r ON u.telegram_user_id = r.owner_telegram_id
+            WHERE u.sponsor_code = ?
+        """, (ref_code,))
+        total_members += cur.fetchone()["count"]
+    
+    count = len(all_refs)
+    avg_visitors = int(total_visitors / count) if count > 0 else 0
+    avg_members = int(total_members / count) if count > 0 else 0
+    avg_conversion = int((total_members / total_visitors * 100)) if total_visitors > 0 else 0
+    
+    conn.close()
+    
+    return {
+        "avg_visitors": avg_visitors,
+        "avg_members": avg_members,
+        "avg_conversion": avg_conversion
+    }
+
+
+def get_top10_stats() -> Dict[str, Any]:
+    """Get average statistics for top 10% of affiliates."""
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    # Get all team sizes
+    cur.execute("""
+        SELECT sponsor_code, COUNT(*) as team_size
+        FROM users
+        WHERE sponsor_code IS NOT NULL
+        GROUP BY sponsor_code
+        ORDER BY team_size DESC
+    """)
+    
+    all_teams = cur.fetchall()
+    
+    if not all_teams:
+        conn.close()
+        return {
+            "top10_visitors": 0,
+            "top10_members": 0
+        }
+    
+    # Get top 10%
+    top10_count = max(1, int(len(all_teams) * 0.1))
+    top_teams = all_teams[:top10_count]
+    
+    total_visitors = 0
+    total_members = 0
+    
+    for team in top_teams:
+        ref_code = team["sponsor_code"]
+        total_visitors += team["team_size"]
+        
+        # Count members for this team
+        cur.execute("""
+            SELECT COUNT(*) as count FROM users u
+            INNER JOIN referrers r ON u.telegram_user_id = r.owner_telegram_id
+            WHERE u.sponsor_code = ?
+        """, (ref_code,))
+        total_members += cur.fetchone()["count"]
+    
+    avg_visitors = int(total_visitors / top10_count) if top10_count > 0 else 0
+    avg_members = int(total_members / top10_count) if top10_count > 0 else 0
+    
+    conn.close()
+    
+    return {
+        "top10_visitors": avg_visitors,
+        "top10_members": avg_members
+    }
+
+
+def get_personal_stats(user_id: int) -> Dict[str, Any]:
+    """Get comprehensive personal statistics for a user."""
+    db_init()
+    
+    # Get user's referrer info
+    ref = get_referrer_by_owner(user_id)
+    if not ref:
+        return None
+    
+    ref_code = ref["ref_code"]
+    
+    # Get basic team stats
+    team_stats = get_team_stats(ref_code)
+    visitors = team_stats["total_team"]
+    active_members = team_stats["team_with_links"]
+    
+    # Get rank
+    rank_info = get_user_rank(user_id)
+    
+    # Get activity score
+    score, stars = calculate_activity_score(visitors, active_members)
+    
+    # Get growth stats
+    growth = get_growth_stats(ref_code)
+    
+    # Get streak
+    streak = get_user_streak(user_id)
+    
+    # Calculate conversion rate
+    conversion = int((active_members / visitors * 100)) if visitors > 0 else 0
+    
+    return {
+        "ref_code": ref_code,
+        "visitors": visitors,
+        "active_members": active_members,
+        "conversion": conversion,
+        "rank": rank_info["rank"],
+        "total_affiliates": rank_info["total"],
+        "percentile": rank_info["percentile"],
+        "activity_score": score,
+        "activity_stars": stars,
+        "growth": growth,
+        "streak": streak
+    }
+
+
 def get_admin_statistics() -> Dict[str, Any]:
     """Get comprehensive bot statistics for admin."""
     conn = db_connect()
@@ -668,6 +979,86 @@ def sharing_tools_submenu_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     ])
 
 
+def my_stats_hub_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Main My Stats hub with 4 options."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "btn_personal_stats", "📊 Personal Stats"), callback_data="mystats:personal")],
+        [InlineKeyboardButton(ui_get(content, "btn_team_stats", "👥 Team Stats"), callback_data="mystats:team_hub")],
+        [InlineKeyboardButton(ui_get(content, "btn_my_actions", "⚡ My Actions"), callback_data="mystats:actions")],
+        [InlineKeyboardButton(ui_get(content, "btn_my_milestones", "🎖️ My Milestones"), callback_data="mystats:milestones")],
+        [InlineKeyboardButton(ui_get(content, "back_to_sharing_tools", "⬅️ Back to Sharing Tools"), callback_data="menu:affiliate_tools")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
+def personal_stats_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Personal Stats screen keyboard."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "btn_activity_help", "❓ How is this calculated?"), callback_data="mystats:activity_help")],
+        [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
+def team_stats_hub_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Team Stats hub keyboard."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "btn_team_details", "👥 Team Details"), callback_data="mystats:team_details")],
+        [InlineKeyboardButton(ui_get(content, "btn_team_comparison", "📊 Team Comparison"), callback_data="mystats:team_comparison")],
+        [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
+def team_details_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Team Details screen keyboard."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "back_to_team_stats", "⬅️ Back to Team Stats"), callback_data="mystats:team_hub")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
+def team_comparison_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Team Comparison screen keyboard."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "back_to_team_stats", "⬅️ Back to Team Stats"), callback_data="mystats:team_hub")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
+def my_actions_kb(content: Dict[str, Any], ref_code: str, actions: List[str]) -> InlineKeyboardMarkup:
+    """My Actions screen with dynamic action buttons."""
+    buttons = []
+    
+    for action in actions:
+        if action == "convert":
+            buttons.append([InlineKeyboardButton(ui_get(content, "btn_send_followup", "📧 Send Follow-Up Template"), callback_data=f"action:followup:{ref_code}")])
+        elif action == "climb":
+            buttons.append([InlineKeyboardButton(ui_get(content, "btn_share_invite", "📤 Share Invite Link"), callback_data="affiliate:share_invite")])
+        elif action == "streak":
+            buttons.append([InlineKeyboardButton(ui_get(content, "btn_come_back", "🔥 Come Back Tomorrow"), callback_data="action:streak_reminder")])
+    
+    buttons.append([InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")])
+    buttons.append([InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")])
+    
+    return InlineKeyboardMarkup(buttons)
+
+
+def my_milestones_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """My Milestones screen keyboard."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
+def activity_help_popup_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Activity score help popup keyboard."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("✅ Got it!", callback_data="mystats:personal")]
+    ])
+
+
 def links_list_kb(content: Dict[str, Any], items: List[Dict[str, str]], back_target: str) -> InlineKeyboardMarkup:
     keyboard: List[List[InlineKeyboardButton]] = []
     for item in items:
@@ -710,12 +1101,12 @@ def check_ref_links_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
 
 
 def affiliate_tools_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
-    """Keyboard for Affiliate Tools submenu."""
+    """Keyboard for Sharing Tools submenu."""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(ui_get(content, "share_invite_btn", "📤 Share My Invite Link"), callback_data="affiliate:share_invite")],
         [InlineKeyboardButton(ui_get(content, "menu_set_links", "🔗 Set Referral Links"), callback_data="affiliate:set_links")],
         [InlineKeyboardButton(ui_get(content, "check_ref_links_btn", "🔍 Check My Referral Links"), callback_data="affiliate:check_links")],
-        [InlineKeyboardButton(ui_get(content, "my_team_stats_btn", "🤖 My Bot Link Stats"), callback_data="affiliate:stats")],
+        [InlineKeyboardButton(ui_get(content, "my_team_stats_btn", "📊 My Stats"), callback_data="mystats:hub")],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
     ])
 
@@ -2008,6 +2399,311 @@ async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     await update.message.reply_text(text, reply_markup=build_main_menu(content))
 
 
+async def on_mystats_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle My Stats menu navigation."""
+    query = update.callback_query
+    await query.answer()
+    
+    db_init()
+    all_content = load_all_content()
+    content = get_active_content(context, all_content)
+    
+    data = query.data or ""
+    user_id = query.from_user.id
+    action = data.split(":", 1)[1] if ":" in data else ""
+    
+    # Check if user has referral links set
+    ref = get_referrer_by_owner(user_id)
+    if not ref:
+        await safe_show_menu_message(
+            query, 
+            context, 
+            ui_get(content, "ref_not_set", "Set your links first."), 
+            sharing_tools_submenu_kb(content)
+        )
+        return
+    
+    # Route to appropriate handler
+    if action == "hub":
+        # My Stats Hub
+        await show_mystats_hub(query, context, content)
+    
+    elif action == "personal":
+        # Personal Stats
+        await show_personal_stats(query, context, content, user_id)
+    
+    elif action == "activity_help":
+        # Activity Score Help Popup
+        await show_activity_help(query, context, content, user_id)
+    
+    elif action == "team_hub":
+        # Team Stats Hub - Coming Soon
+        await safe_show_menu_message(
+            query,
+            context,
+            "👥 TEAM STATS\n\n🚧 Coming soon!\n\nThis feature is being built and will be available shortly.",
+            InlineKeyboardMarkup([
+                [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")],
+                [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+            ])
+        )
+    
+    elif action == "actions":
+        # My Actions - Coming Soon
+        await safe_show_menu_message(
+            query,
+            context,
+            "⚡ MY ACTIONS\n\n🚧 Coming soon!\n\nThis feature is being built and will be available shortly.",
+            InlineKeyboardMarkup([
+                [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")],
+                [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+            ])
+        )
+    
+    elif action == "milestones":
+        # My Milestones - Coming Soon
+        await safe_show_menu_message(
+            query,
+            context,
+            "🎖️ MY MILESTONES\n\n🚧 Coming soon!\n\nThis feature is being built and will be available shortly.",
+            InlineKeyboardMarkup([
+                [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")],
+                [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+            ])
+        )
+
+
+async def show_mystats_hub(query, context, content):
+    """Show My Stats hub screen."""
+    title = ui_get(content, "my_stats_hub_title", "📊 MY STATS\n\nChoose what you'd like to view:")
+    await safe_show_menu_message(query, context, title, my_stats_hub_kb(content))
+
+
+async def show_personal_stats(query, context, content, user_id: int):
+    """Show Personal Stats screen."""
+    # Get personal stats
+    stats = get_personal_stats(user_id)
+    
+    if not stats:
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "ref_not_set", "Set your links first."),
+            sharing_tools_submenu_kb(content)
+        )
+        return
+    
+    # Build the screen text
+    sections = []
+    
+    # Title
+    sections.append(ui_get(content, "personal_stats_title", "📊 YOUR PERSONAL STATS"))
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Rank Section
+    sections.append(ui_get(content, "your_rank_section", "🏆 YOUR RANK"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    rank_text = ui_get(content, "rank_display", "#{rank} of {total} affiliates\n(Top {percentage}%)")
+    rank_text = rank_text.replace("{rank}", str(stats["rank"]))
+    rank_text = rank_text.replace("{total}", str(stats["total_affiliates"]))
+    rank_text = rank_text.replace("{percentage}", str(stats["percentile"]))
+    sections.append(rank_text)
+    
+    # Add rank tip if applicable
+    if stats["rank"] > 1:
+        next_rank = stats["rank"] - 1
+        gap = 2  # Simplified - could calculate actual gap
+        unit = ui_get(content, "visitors_unit", "visitors")
+        tip = ui_get(content, "rank_tip", "💡 Just {gap} more {unit} to reach #{next_rank}!")
+        tip = tip.replace("{gap}", str(gap))
+        tip = tip.replace("{unit}", unit)
+        tip = tip.replace("{next_rank}", str(next_rank))
+        sections.append("")
+        sections.append(tip)
+    
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Team Overview Section
+    sections.append(ui_get(content, "team_overview_section", "👥 YOUR TEAM OVERVIEW"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    visitors_text = ui_get(content, "total_visitors", "Total Unique Visitors: {count}")
+    visitors_text = visitors_text.replace("{count}", str(stats["visitors"]))
+    sections.append(visitors_text)
+    
+    members_text = ui_get(content, "active_members", "Active Members: {count} ({percent}%)")
+    members_text = members_text.replace("{count}", str(stats["active_members"]))
+    members_text = members_text.replace("{percent}", str(stats["conversion"]))
+    sections.append(members_text)
+    
+    # Progress bar
+    progress_bar = create_progress_bar(stats["conversion"])
+    sections.append(progress_bar)
+    
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Activity Score Section
+    sections.append(ui_get(content, "activity_score_section", "⭐ TEAM ACTIVITY SCORE"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    score_text = ui_get(content, "activity_score_display", "{stars} ({score}/5)")
+    score_text = score_text.replace("{stars}", stats["activity_stars"])
+    score_text = score_text.replace("{score}", f"{stats['activity_score']:.1f}")
+    sections.append(score_text)
+    
+    sections.append("")
+    
+    percentile_text = ui_get(content, "activity_percentile", "You're in the top {percent}% of affiliates!")
+    percentile_text = percentile_text.replace("{percent}", str(stats["percentile"]))
+    sections.append(percentile_text)
+    
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Weekly Growth Section
+    sections.append(ui_get(content, "this_week_section", "📈 THIS WEEK"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    if stats["growth"]["has_time_data"]:
+        new_visitors = ui_get(content, "new_visitors", "• New Visitors: {count}")
+        new_visitors = new_visitors.replace("{count}", str(stats["growth"]["visitors_7d"]))
+        sections.append(new_visitors)
+        
+        new_members = ui_get(content, "new_members", "• New Members: {count}")
+        new_members = new_members.replace("{count}", str(stats["growth"]["members_7d"]))
+        sections.append(new_members)
+        
+        # Calculate growth rate
+        if stats["visitors"] > 0:
+            growth_rate = int((stats["growth"]["visitors_7d"] / stats["visitors"]) * 100)
+            growth_text = ui_get(content, "growth_rate", "• Growth Rate: +{percent}%")
+            growth_text = growth_text.replace("{percent}", str(growth_rate))
+            sections.append(growth_text)
+    else:
+        sections.append("• Growth tracking coming soon!")
+    
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # 7-Day Trend
+    sections.append(ui_get(content, "trend_section", "📈 7-DAY TREND"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    if stats["growth"]["has_time_data"]:
+        chart = "▁▂▃▅▆█▇"  # Simplified chart
+        trend_text = ui_get(content, "members_trend", "Members: {chart} (+{count} this week!)")
+        trend_text = trend_text.replace("{chart}", chart)
+        trend_text = trend_text.replace("{count}", str(stats["growth"]["members_7d"]))
+        sections.append(trend_text)
+    else:
+        sections.append("Trend tracking coming soon!")
+    
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Streak Section
+    sections.append(ui_get(content, "streak_section", "🔥 ACTIVE STREAK"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    if stats["streak"] > 0:
+        streak_text = ui_get(content, "streak_display", "{days} days in a row!\nKeep it going! 💪")
+        streak_text = streak_text.replace("{days}", str(stats["streak"]))
+        sections.append(streak_text)
+    else:
+        sections.append(ui_get(content, "no_streak", "No active streak yet.\nCome back tomorrow to start one! 🔥"))
+    
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    # Monthly Summary
+    sections.append(ui_get(content, "monthly_section", "📅 THIS MONTH"))
+    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    
+    if stats["growth"]["has_time_data"]:
+        monthly_visitors = ui_get(content, "monthly_visitors", "• Unique Visitors Added: {count}")
+        monthly_visitors = monthly_visitors.replace("{count}", str(stats["growth"]["visitors_30d"]))
+        sections.append(monthly_visitors)
+        
+        monthly_members = ui_get(content, "monthly_members", "• New Members: {count}")
+        monthly_members = monthly_members.replace("{count}", str(stats["growth"]["members_30d"]))
+        sections.append(monthly_members)
+        
+        best_week = ui_get(content, "best_week", "• Best Week: {count} new members")
+        best_week = best_week.replace("{count}", str(max(stats["growth"]["members_7d"], 1)))
+        sections.append(best_week)
+    else:
+        sections.append("• Monthly tracking coming soon!")
+    
+    # Combine all sections
+    full_text = "\n".join(sections)
+    
+    await safe_show_menu_message(query, context, full_text, personal_stats_kb(content))
+
+
+async def show_activity_help(query, context, content, user_id: int):
+    """Show activity score help popup."""
+    stats = get_personal_stats(user_id)
+    
+    if not stats:
+        await query.answer("Unable to load stats", show_alert=True)
+        return
+    
+    # Calculate breakdown
+    conversion = stats["conversion"]
+    visitors = stats["visitors"]
+    
+    # Conversion stars
+    if conversion >= 60:
+        conversion_stars = 3.0
+    elif conversion >= 40:
+        conversion_stars = 2.0
+    elif conversion >= 20:
+        conversion_stars = 1.0
+    else:
+        conversion_stars = 0.0
+    
+    # Size stars
+    if visitors >= 50:
+        size_stars = 2.0
+    elif visitors >= 30:
+        size_stars = 1.5
+    elif visitors >= 20:
+        size_stars = 1.0
+    else:
+        size_stars = 0.0
+    
+    # Build help text
+    help_text = ui_get(content, "activity_help_text", "Activity score explanation")
+    help_text = help_text.replace("{conversion}", str(conversion))
+    help_text = help_text.replace("{conversion_stars}", f"{conversion_stars:.1f}")
+    help_text = help_text.replace("{team_size}", str(visitors))
+    help_text = help_text.replace("{size_stars}", f"{size_stars:.1f}")
+    help_text = help_text.replace("{total_score}", f"{stats['activity_score']:.1f}")
+    help_text = help_text.replace("{stars}", stats["activity_stars"])
+    
+    title = ui_get(content, "activity_help_title", "⭐ ACTIVITY SCORE EXPLAINED")
+    full_text = f"{title}\n\n{help_text}"
+    
+    await safe_show_menu_message(query, context, full_text, activity_help_popup_kb(content))
+
+
+async def on_action_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle action button clicks (placeholder for Stage 2)."""
+    query = update.callback_query
+    await query.answer("This feature is coming in the next update!", show_alert=True)
+
+
+def create_progress_bar(percentage: int, length: int = 10) -> str:
+    """Create a visual progress bar."""
+    filled = int((percentage / 100) * length)
+    bar = "▓" * filled + "░" * (length - filled)
+    return f"{bar} {percentage}%"
+
+
 def main() -> None:
     token = (os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip()
     if not token:
@@ -2028,6 +2724,8 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(on_ref_click, pattern=r"^ref:"))
     app.add_handler(CallbackQueryHandler(on_invite_click, pattern=r"^invite:"))
     app.add_handler(CallbackQueryHandler(on_affiliate_click, pattern=r"^affiliate:"))
+    app.add_handler(CallbackQueryHandler(on_mystats_click, pattern=r"^mystats:"))
+    app.add_handler(CallbackQueryHandler(on_action_click, pattern=r"^action:"))
     app.add_handler(CallbackQueryHandler(on_language_click, pattern=r"^lang:set:"))
     app.add_handler(CallbackQueryHandler(on_join_click, pattern=r"^join:"))
     app.add_handler(CallbackQueryHandler(on_faq_click, pattern=r"^(faq_topic:|faq_q:|faq_back_|faq_search:)"))
