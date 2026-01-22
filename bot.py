@@ -2495,11 +2495,11 @@ async def show_personal_stats(query, context, content, user_id: int):
     # Title
     sections.append(ui_get(content, "personal_stats_title", "📊 YOUR PERSONAL STATS"))
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Rank Section
     sections.append(ui_get(content, "your_rank_section", "🏆 YOUR RANK"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     rank_text = ui_get(content, "rank_display", "#{rank} of {total} affiliates\n(Top {percentage}%)")
     rank_text = rank_text.replace("{rank}", str(stats["rank"]))
@@ -2520,11 +2520,11 @@ async def show_personal_stats(query, context, content, user_id: int):
         sections.append(tip)
     
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Team Overview Section
     sections.append(ui_get(content, "team_overview_section", "👥 YOUR TEAM OVERVIEW"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     visitors_text = ui_get(content, "total_visitors", "Total Unique Visitors: {count}")
     visitors_text = visitors_text.replace("{count}", str(stats["visitors"]))
@@ -2540,11 +2540,11 @@ async def show_personal_stats(query, context, content, user_id: int):
     sections.append(progress_bar)
     
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Activity Score Section
     sections.append(ui_get(content, "activity_score_section", "⭐ TEAM ACTIVITY SCORE"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     score_text = ui_get(content, "activity_score_display", "{stars} ({score}/5)")
     score_text = score_text.replace("{stars}", stats["activity_stars"])
@@ -2558,11 +2558,11 @@ async def show_personal_stats(query, context, content, user_id: int):
     sections.append(percentile_text)
     
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Weekly Growth Section
     sections.append(ui_get(content, "this_week_section", "📈 THIS WEEK"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     if stats["growth"]["has_time_data"]:
         new_visitors = ui_get(content, "new_visitors", "• New Visitors: {count}")
@@ -2583,11 +2583,11 @@ async def show_personal_stats(query, context, content, user_id: int):
         sections.append("• Growth tracking coming soon!")
     
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # 7-Day Trend
     sections.append(ui_get(content, "trend_section", "📈 7-DAY TREND"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     if stats["growth"]["has_time_data"]:
         chart = "▁▂▃▅▆█▇"  # Simplified chart
@@ -2599,11 +2599,11 @@ async def show_personal_stats(query, context, content, user_id: int):
         sections.append("Trend tracking coming soon!")
     
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Streak Section
     sections.append(ui_get(content, "streak_section", "🔥 ACTIVE STREAK"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     if stats["streak"] > 0:
         streak_text = ui_get(content, "streak_display", "{days} days in a row!\nKeep it going! 💪")
@@ -2613,11 +2613,11 @@ async def show_personal_stats(query, context, content, user_id: int):
         sections.append(ui_get(content, "no_streak", "No active streak yet.\nCome back tomorrow to start one! 🔥"))
     
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Monthly Summary
     sections.append(ui_get(content, "monthly_section", "📅 THIS MONTH"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     if stats["growth"]["has_time_data"]:
         monthly_visitors = ui_get(content, "monthly_visitors", "• Unique Visitors Added: {count}")
@@ -2711,11 +2711,11 @@ async def show_team_details(query, context, content, user_id: int):
     # Title
     sections.append(ui_get(content, "team_details_title", "👥 TEAM DETAILS"))
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Team Composition Section
     sections.append(ui_get(content, "team_composition_section", "👥 TEAM COMPOSITION"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Build composition display
     comp_display = ui_get(content, "team_comp_display", "Total Visitors: {total}\nActive Members: {active} ({percent}%)")
@@ -2740,11 +2740,11 @@ async def show_team_details(query, context, content, user_id: int):
     sections.append(progress_bar)
     
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Team Activity Section
     sections.append(ui_get(content, "team_activity_section", "👥 RECENT TEAM ACTIVITY"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Simplified activity feed (would need actual activity log for real data)
     if stats["growth"]["has_time_data"] and stats["growth"]["members_7d"] > 0:
@@ -2757,11 +2757,11 @@ async def show_team_details(query, context, content, user_id: int):
         sections.append(ui_get(content, "no_activity", "No recent activity to show."))
     
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Team Quality Section
     sections.append(ui_get(content, "team_quality_section", "👥 TEAM QUALITY"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     quality_display = ui_get(content, "quality_display", "Active Members: {active}/{total} ({percent}%)\n\nQuality Score: {stars} ({score}/5)")
     quality_display = quality_display.replace("{active}", str(stats["active_members"]))
@@ -2804,11 +2804,11 @@ async def show_team_comparison(query, context, content, user_id: int):
     # Title
     sections.append(ui_get(content, "team_comparison_title", "📊 TEAM COMPARISON"))
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # VS Average Section
     sections.append(ui_get(content, "vs_average_section", "📊 VS AVERAGE AFFILIATE"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Calculate differences
     visitors_diff = stats["visitors"] - avg_stats["avg_visitors"]
@@ -2841,11 +2841,11 @@ async def show_team_comparison(query, context, content, user_id: int):
     sections.append(vs_avg_display)
     
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # VS Top 10% Section
     sections.append(ui_get(content, "vs_top10_section", "📊 VS TOP 10%"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Calculate gap to top 10%
     visitors_gap = top10_stats["top10_visitors"] - stats["visitors"]
@@ -3093,13 +3093,13 @@ async def show_my_actions(query, context, content, user_id: int):
     
     for i, suggestion in enumerate(top_suggestions):
         if i > 0:
-            sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+            sections.append("━━━━━━━━━━━━━━━")
         sections.append("")
         sections.append(suggestion["text"])
         sections.append("")
         actions_list.append(suggestion["type"])
     
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # If no suggestions somehow, show encouragement
     if not actions_list:
@@ -3212,11 +3212,11 @@ async def show_my_milestones(query, context, content, user_id: int):
     # Title
     sections.append(ui_get(content, "my_milestones_title", "🎖️ MY MILESTONES"))
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Next Milestone Section
     sections.append(ui_get(content, "next_milestone_section", "🎯 NEXT MILESTONE"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Find next milestone
     milestones = [10, 25, 50, 100, 250, 500]
@@ -3258,7 +3258,7 @@ async def show_my_milestones(query, context, content, user_id: int):
         sections.append("🎉 You've reached all milestones! Amazing!")
     
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Achievements Section
     unlocked_count = 0
@@ -3351,7 +3351,7 @@ async def show_my_milestones(query, context, content, user_id: int):
     unlocked_count += 1
     
     sections.append(ui_get(content, "achievements_section", "🏅 ACHIEVEMENTS UNLOCKED ({unlocked}/{total})").replace("{unlocked}", str(unlocked_count)).replace("{total}", str(total_achievements)))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Show achievements (up to 11 total: 8 unlocked + 3 locked)
     shown = 0
@@ -3362,11 +3362,11 @@ async def show_my_milestones(query, context, content, user_id: int):
         shown += 1
     
     sections.append("")
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Recent Wins Section
     sections.append(ui_get(content, "recent_wins_section", "🎉 RECENT WINS"))
-    sections.append("━━━━━━━━━━━━━━━━━━━━━━")
+    sections.append("━━━━━━━━━━━━━━━")
     
     # Generate recent wins based on stats
     wins = []
