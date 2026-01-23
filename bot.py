@@ -2037,13 +2037,12 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
     ref = get_referrer_by_owner(user_id)
 
     if action == "share_invite":
-        # Share invite link - requires links to be set
+        # Share invite link with templates - requires links to be set
         if not ref:
             await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), sharing_tools_submenu_kb(content))
             return
-        invite = build_invite_link(ref["ref_code"], content)
-        share_text = ui_get(content, "ref_share_text", "Share your invite:\n\n{invite}").replace("{invite}", invite)
-        await safe_show_menu_message(query, context, share_text, sharing_tools_submenu_kb(content))
+        # Show template chooser
+        await show_share_template_chooser(query, context, content, user_id)
         return
 
     if action == "set_links":
