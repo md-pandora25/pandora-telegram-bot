@@ -1044,7 +1044,7 @@ def my_actions_kb(content: Dict[str, Any], ref_code: str, actions: List[str]) ->
         elif action == "reengage":
             buttons.append([InlineKeyboardButton(ui_get(content, "btn_reengage_message", "📧 Send Re-engagement Message"), callback_data=f"action:reengage:{ref_code}")])
         elif action == "celebrate":
-            buttons.append([InlineKeyboardButton(ui_get(content, "btn_share_achievement", "📣 Share Achievement"), callback_data="affiliate:share_invite")])
+            buttons.append([InlineKeyboardButton(ui_get(content, "btn_share_achievement", "📣 Share Achievement"), callback_data="action:share_achievement")])
         elif action == "weekly_goal":
             buttons.append([InlineKeyboardButton(ui_get(content, "btn_set_goal", "⚡ Set Weekly Goal"), callback_data="action:weekly_goal")])
         elif action == "best_time":
@@ -2994,6 +2994,10 @@ async def on_action_click(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     elif action_type == "best_time":
         # Show best time reminder (placeholder for now)
         await query.answer("Reminder feature coming soon! ⏰", show_alert=True)
+    
+    elif action_type == "share_achievement":
+        # Show achievement share message
+        await show_share_achievement(query, context, content_obj, query.from_user.id)
 
 
 async def show_my_actions(query, context, content, user_id: int):
@@ -3225,6 +3229,70 @@ async def show_conversion_tips(query, context, content):
         context,
         tips_text,
         InlineKeyboardMarkup([
+            [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:actions")],
+            [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+        ])
+    )
+
+
+async def show_share_achievement(query, context, content, user_id: int):
+    """Show pre-filled achievement share message."""
+    # Get user stats to determine achievement
+    stats = get_personal_stats(user_id)
+    
+    if not stats:
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "ref_not_set", "Set your links first."),
+            back_to_menu_kb(content)
+        )
+        return
+    
+    # Build invite link
+    ref = get_referrer_by_owner(user_id)
+    invite_link = build_invite_link(ref["ref_code"], content)
+    
+    # Determine the achievement to celebrate
+    achievement = ""
+    members = stats["active_members"]
+    
+    if members >= 100:
+        achievement = ui_get(content, "achievement_100_members", "100 members")
+    elif members >= 50:
+        achievement = ui_get(content, "achievement_50_members", "50 members")
+    elif members >= 25:
+        achievement = ui_get(content, "achievement_25_members", "25 members")
+    elif members >= 10:
+        achievement = ui_get(content, "achievement_10_members", "10 members")
+    else:
+        achievement = ui_get(content, "achievement_first_team", "my first team members")
+    
+    # Get the share message template
+    share_message = ui_get(
+        content,
+        "share_achievement_message",
+        "🎉 Just hit {achievement} in my Pandora AI team!\n\n"
+        "The 10X deposit amplification is working - real growth is happening! "
+        "Their bot makes everything so clear.\n\n"
+        "Want to join? Check it out:\n{link}\n\n"
+        "Building something special here! 💪"
+    )
+    
+    share_message = share_message.replace("{achievement}", achievement).replace("{link}", invite_link)
+    
+    # Show the message
+    header = ui_get(content, "share_achievement_header", "📣 SHARE YOUR ACHIEVEMENT")
+    copy_instruction = ui_get(content, "share_achievement_copy", "📋 Copy and share this message:")
+    
+    full_text = f"{header}\n━━━━━━━━━━━━━━━\n\n{copy_instruction}\n\n{share_message}"
+    
+    await safe_show_menu_message(
+        query,
+        context,
+        full_text,
+        InlineKeyboardMarkup([
+            [InlineKeyboardButton(ui_get(content, "btn_view_share_templates", "💬 Use Share Templates Instead"), callback_data="share_tpl:choose")],
             [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:actions")],
             [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
         ])
@@ -3477,10 +3545,23 @@ async def show_my_milestones(query, context, content, user_id: int):
 
 async def show_share_template_chooser(query, context, content, user_id: int):
     """Show the template style chooser screen."""
-    title = ui_get(content, "share_template_chooser_title", "💬 CHOOSE A SHARE STYLE")
-    intro = ui_get(content, "share_template_chooser_intro", "Select the style that matches how you want to share:")
+    # Get user's referral code and build invite link
+    ref = get_referrer_by_owner(user_id)
+    if not ref:
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "ref_not_set", "Set your links first."),
+            back_to_menu_kb(content)
+        )
+        return
     
-    full_text = f"{title}\n\n{intro}"
+    invite_link = build_invite_link(ref["ref_code"], content)
+    
+    title = ui_get(content, "share_template_chooser_title", "💬 CHOOSE A SHARE STYLE")
+    intro = ui_get(content, "share_template_chooser_intro", "Select the style that matches how you want to share, or if you know what you want to say simply copy your invite link here:")
+    
+    full_text = f"{title}\n\n{intro}\n\n{invite_link}"
     
     await safe_show_menu_message(
         query,
