@@ -3574,16 +3574,26 @@ async def show_member_list(query, context, content, user_id: int):
         
         ref_code = ref["ref_code"]
         
-        # Get all downline members recursively
-        def get_all_downline(sponsor_code, depth=0, max_depth=20):
+        # Get all downline members recursively with duplicate prevention
+        def get_all_downline(sponsor_code, depth=0, max_depth=20, seen_codes=None):
             """Recursively get all members in downline."""
+            if seen_codes is None:
+                seen_codes = set()
+            
             if depth > max_depth:
                 return []
+            
+            # Prevent infinite loops
+            if sponsor_code in seen_codes:
+                logger.warning(f"Circular reference detected: {sponsor_code}")
+                return []
+            
+            seen_codes.add(sponsor_code)
             
             conn = db_connect()
             cur = conn.cursor()
             
-            # Get direct referrals
+            # Get direct referrals of this sponsor
             cur.execute("""
                 SELECT u.telegram_user_id
                 FROM users u
@@ -3607,15 +3617,20 @@ async def show_member_list(query, context, content, user_id: int):
                 
                 if member_ref:
                     member_code = member_ref["ref_code"]
-                    all_members.append({
-                        "code": member_code,
-                        "telegram_id": member_id,
-                        "depth": depth
-                    })
                     
-                    # Recursively get their downline
-                    downline = get_all_downline(member_code, depth + 1, max_depth)
-                    all_members.extend(downline)
+                    # Only add if we haven't seen this code before
+                    if member_code not in seen_codes:
+                        all_members.append({
+                            "code": member_code,
+                            "telegram_id": member_id,
+                            "depth": depth + 1  # Depth from original user (not recursion depth)
+                        })
+                        
+                        # Recursively get their downline
+                        downline = get_all_downline(member_code, depth + 1, max_depth, seen_codes)
+                        all_members.extend(downline)
+            
+            return all_members
             
             return all_members
         
@@ -3680,13 +3695,14 @@ async def show_member_list(query, context, content, user_id: int):
                 if current_level is not None:
                     sections.append("")
                 
-                level_name = ui_get(content, "level_direct", "DIRECT MEMBERS") if member["depth"] == 0 else ui_get(content, "level_indirect", "LEVEL {level} MEMBERS").replace("{level}", str(member["depth"] + 1))
+                # Depth 1 = Direct Members, Depth 2 = Level 2, etc.
+                level_name = ui_get(content, "level_direct", "DIRECT MEMBERS") if member["depth"] == 1 else ui_get(content, "level_indirect", "LEVEL {level} MEMBERS").replace("{level}", str(member["depth"]))
                 sections.append(level_name)
                 sections.append("")
                 current_level = member["depth"]
             
-            # Add member entry
-            indent = "  " * member["depth"]  # Indent based on depth
+            # Add member entry - indent based on depth (depth 1 = no indent, depth 2 = 2 spaces, etc)
+            indent = "  " * (member["depth"] - 1) if member["depth"] > 1 else ""
             
             member_line = f"{indent}• {member['code']}"
             
