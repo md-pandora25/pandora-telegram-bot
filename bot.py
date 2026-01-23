@@ -3285,7 +3285,8 @@ def get_member_code(telegram_id: int) -> str:
 
 def is_admin(user_id: int) -> bool:
     """Check if user is an admin."""
-    admin_ids_str = os.getenv("ADMIN_IDS", "")
+    # Try both possible env var names for compatibility
+    admin_ids_str = os.getenv("ADMIN_USER_IDS", "") or os.getenv("ADMIN_IDS", "")
     if not admin_ids_str:
         return False
     
