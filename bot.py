@@ -1005,6 +1005,8 @@ def team_stats_hub_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(ui_get(content, "btn_team_details", "👥 Team Details"), callback_data="mystats:team_details")],
         [InlineKeyboardButton(ui_get(content, "btn_team_comparison", "📊 Team Comparison"), callback_data="mystats:team_comparison")],
+        [InlineKeyboardButton(ui_get(content, "btn_activity_feed", "🔔 Activity Feed"), callback_data="mystats:activity_feed")],
+        [InlineKeyboardButton(ui_get(content, "btn_analyze_member", "🔍 Analyze Team Member"), callback_data="mystats:analyze_member")],
         [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
     ])
@@ -1020,6 +1022,31 @@ def team_details_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
 
 def team_comparison_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     """Team Comparison screen keyboard."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "back_to_team_stats", "⬅️ Back to Team Stats"), callback_data="mystats:team_hub")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
+def activity_feed_kb(content: Dict[str, Any], timeframe: str = "24h") -> InlineKeyboardMarkup:
+    """Activity Feed screen keyboard with timeframe toggle."""
+    # Create toggle buttons - highlight active one
+    btn_24h = "📅 Last 24 Hours" if timeframe == "24h" else "Last 24 Hours"
+    btn_7d = "📅 Last 7 Days" if timeframe == "7d" else "Last 7 Days"
+    
+    return InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(btn_24h, callback_data="mystats:activity_24h"),
+            InlineKeyboardButton(btn_7d, callback_data="mystats:activity_7d")
+        ],
+        [InlineKeyboardButton(ui_get(content, "btn_refresh", "🔄 Refresh"), callback_data=f"mystats:activity_{timeframe}")],
+        [InlineKeyboardButton(ui_get(content, "back_to_team_stats", "⬅️ Back to Team Stats"), callback_data="mystats:team_hub")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
+def analyze_member_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Analyze Member screen keyboard."""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(ui_get(content, "back_to_team_stats", "⬅️ Back to Team Stats"), callback_data="mystats:team_hub")],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
@@ -2324,6 +2351,33 @@ async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     msg = update.message.text.strip()
     user_id = update.effective_user.id if update.effective_user else None
 
+    # Handle member code analysis
+    if context.user_data.get("awaiting_member_code") is True:
+        context.user_data["awaiting_member_code"] = False
+        analyzer_id = context.user_data.get("analyzer_user_id", user_id)
+        
+        # Validate code format (6 characters alphanumeric)
+        if len(msg) != 6 or not msg.isalnum():
+            await update.message.reply_text(
+                ui_get(content, "invalid_member_code", "❌ Invalid code. Member codes are 6 characters (letters and numbers)."),
+                reply_markup=analyze_member_kb(content)
+            )
+            return
+        
+        target_code = msg.upper()
+        
+        # Check if user has permission to analyze this member
+        if not can_analyze_member(analyzer_id, target_code):
+            await update.message.reply_text(
+                ui_get(content, "analyze_access_denied", "⚠️ ACCESS DENIED\n\nYou can only analyze members in your downline (your team).\n\nThis code is outside your team."),
+                reply_markup=analyze_member_kb(content)
+            )
+            return
+        
+        # Show member analysis
+        await show_member_analysis(update.message, context, content, target_code)
+        return
+
     # Handle Step 1 URL capture
     if context.user_data.get("awaiting_step1_url") is True:
         if not looks_like_url(msg):
@@ -2520,6 +2574,15 @@ async def on_mystats_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     elif action == "team_comparison":
         # Team Comparison screen
         await show_team_comparison(query, context, content, user_id)
+    
+    elif action.startswith("activity_"):
+        # Activity Feed screen (24h or 7d)
+        timeframe = "7d" if action == "activity_7d" else "24h"
+        await show_activity_feed(query, context, content, user_id, timeframe)
+    
+    elif action == "analyze_member":
+        # Analyze Team Member screen
+        await show_analyze_member_prompt(query, context, content, user_id)
     
     elif action == "actions":
         # My Actions screen
@@ -2945,10 +3008,481 @@ async def show_team_comparison(query, context, content, user_id: int):
     progress_bar = create_progress_bar(min(100, members_progress))
     sections.append(progress_bar)
     
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━")
+    
+    # NEW: Insights Section
+    sections.append(ui_get(content, "insights_section", "💡 YOUR INSIGHTS"))
+    sections.append("━━━━━━━━━━━━━━━")
+    
+    # Determine strengths and opportunities
+    strengths = []
+    opportunities = []
+    
+    # Check conversion
+    if stats["conversion"] > avg_stats["avg_conversion"]:
+        strengths.append(ui_get(content, "strength_conversion", "✅ High conversion ({yours}% vs {avg}% avg)").replace("{yours}", str(stats["conversion"])).replace("{avg}", str(avg_stats["avg_conversion"])))
+    elif stats["conversion"] < avg_stats["avg_conversion"] - 10:
+        opportunities.append(ui_get(content, "opp_conversion", "📈 Conversion could improve"))
+    
+    # Check team size
+    if stats["active_members"] > avg_stats["avg_members"]:
+        strengths.append(ui_get(content, "strength_team", "✅ Above average team size"))
+    elif stats["active_members"] < avg_stats["avg_members"]:
+        opportunities.append(ui_get(content, "opp_team", "📈 Team size below average"))
+    
+    # Check activity
+    if stats["activity_score"] >= 4.0:
+        strengths.append(ui_get(content, "strength_activity", "✅ Excellent activity score"))
+    elif stats["activity_score"] < 3.0:
+        opportunities.append(ui_get(content, "opp_activity", "📈 Activity could improve"))
+    
+    # Display strengths
+    if strengths:
+        sections.append(ui_get(content, "strengths_header", "🎯 STRENGTHS:"))
+        for strength in strengths:
+            sections.append(strength)
+        sections.append("")
+    
+    # Display opportunities
+    if opportunities:
+        sections.append(ui_get(content, "opportunities_header", "⚠️ OPPORTUNITIES:"))
+        for opp in opportunities:
+            sections.append(opp)
+        sections.append("")
+    
+    # Actionable steps to reach top 10%
+    if members_progress < 100:
+        sections.append(ui_get(content, "to_top10_header", "🚀 TO REACH TOP 10%:"))
+        
+        steps = []
+        if members_gap > 0:
+            steps.append(ui_get(content, "step_add_members", "1. Add {gap} more members").replace("{gap}", str(members_gap)))
+        
+        if stats["conversion"] < 70:
+            steps.append(ui_get(content, "step_improve_conversion", "2. Improve conversion rate"))
+        else:
+            steps.append(ui_get(content, "step_maintain_conversion", "2. Maintain your conversion rate"))
+        
+        steps.append(ui_get(content, "step_share_regularly", "3. Share 3-5x per week"))
+        
+        for step in steps:
+            sections.append(step)
+        
+        sections.append("")
+        
+        # Highlight what they're closest in
+        closest_metric = "conversion" if stats["conversion"] / avg_stats["avg_conversion"] > stats["active_members"] / avg_stats["avg_members"] else "team growth"
+        sections.append(ui_get(content, "closest_in", "💪 YOU'RE CLOSEST IN: {metric}").replace("{metric}", closest_metric.title()))
+        
+        if closest_metric == "conversion":
+            sections.append(ui_get(content, "focus_growth", "Focus on team growth next!"))
+        else:
+            sections.append(ui_get(content, "focus_quality", "Focus on quality next!"))
+    
     # Combine all sections
     full_text = "\n".join(sections)
     
     await safe_show_menu_message(query, context, full_text, team_comparison_kb(content))
+
+
+async def show_activity_feed(query, context, content, user_id: int, timeframe: str = "24h"):
+    """Show team activity feed for last 24h or 7d."""
+    # Get user's referral code
+    ref = get_referrer_by_owner(user_id)
+    if not ref:
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "ref_not_set", "Set your links first."),
+            back_to_menu_kb(content)
+        )
+        return
+    
+    ref_code = ref["ref_code"]
+    
+    # Get team members
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    # Check if created_at exists
+    cur.execute("PRAGMA table_info(users)")
+    columns = [row["name"] for row in cur.fetchall()]
+    has_created_at = "created_at" in columns
+    
+    if not has_created_at:
+        # Fallback if no timestamps
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "activity_not_available", "Activity tracking not yet available. This feature will be enabled soon!"),
+            activity_feed_kb(content, timeframe)
+        )
+        conn.close()
+        return
+    
+    # Calculate time threshold
+    if timeframe == "7d":
+        time_ago = "'-7 days'"
+        title = ui_get(content, "activity_feed_7d_title", "🔔 TEAM ACTIVITY (Last 7 Days)")
+    else:
+        time_ago = "'-1 day'"
+        title = ui_get(content, "activity_feed_24h_title", "🔔 TEAM ACTIVITY (Last 24 Hours)")
+    
+    # Get recent team members (new joins)
+    cur.execute(f"""
+        SELECT telegram_user_id, created_at 
+        FROM users 
+        WHERE sponsor_code = ? 
+        AND created_at IS NOT NULL
+        AND datetime(created_at) > datetime('now', {time_ago})
+        ORDER BY created_at DESC
+        LIMIT 20
+    """, (ref_code,))
+    
+    new_members = cur.fetchall()
+    
+    # Get recent link setters
+    cur.execute(f"""
+        SELECT r.owner_telegram_id, r.created_at
+        FROM referrers r
+        JOIN users u ON r.owner_telegram_id = u.telegram_user_id
+        WHERE u.sponsor_code = ?
+        AND r.created_at IS NOT NULL
+        AND datetime(r.created_at) > datetime('now', {time_ago})
+        ORDER BY r.created_at DESC
+        LIMIT 20
+    """, (ref_code,))
+    
+    link_setters = cur.fetchall()
+    
+    # Get step1 confirmations
+    cur.execute(f"""
+        SELECT telegram_user_id, created_at
+        FROM users
+        WHERE sponsor_code = ?
+        AND step1_confirmed = 1
+        AND created_at IS NOT NULL
+        AND datetime(created_at) > datetime('now', {time_ago})
+        ORDER BY created_at DESC
+        LIMIT 20
+    """, (ref_code,))
+    
+    step1_confirmed = cur.fetchall()
+    
+    conn.close()
+    
+    # Build activity list
+    activities = []
+    
+    # Add new members
+    for member in new_members:
+        try:
+            from datetime import datetime as dt
+            created = dt.fromisoformat(member["created_at"])
+            time_desc = get_relative_time(created)
+            code = get_member_code(member["telegram_user_id"])
+            activities.append((created, ui_get(content, "activity_new_member", "• New member {code} joined 👋").replace("{code}", code), time_desc))
+        except:
+            pass
+    
+    # Add link setters
+    for setter in link_setters:
+        try:
+            from datetime import datetime as dt
+            created = dt.fromisoformat(setter["created_at"])
+            time_desc = get_relative_time(created)
+            code = get_member_code(setter["owner_telegram_id"])
+            activities.append((created, ui_get(content, "activity_set_links", "• {code} set referral links 🔗").replace("{code}", code), time_desc))
+        except:
+            pass
+    
+    # Add step1 confirmations
+    for confirm in step1_confirmed:
+        try:
+            from datetime import datetime as dt
+            created = dt.fromisoformat(confirm["created_at"])
+            time_desc = get_relative_time(created)
+            code = get_member_code(confirm["telegram_user_id"])
+            activities.append((created, ui_get(content, "activity_confirmed_step1", "• {code} confirmed Step 1 ✅").replace("{code}", code), time_desc))
+        except:
+            pass
+    
+    # Sort all activities by time (newest first)
+    activities.sort(key=lambda x: x[0], reverse=True)
+    
+    # Build sections
+    sections = []
+    sections.append(title)
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━")
+    
+    if activities:
+        # Group by day
+        current_day = None
+        for timestamp, activity, time_desc in activities[:15]:  # Show max 15 activities
+            activity_day = timestamp.strftime("%Y-%m-%d")
+            
+            if activity_day != current_day:
+                if current_day is not None:
+                    sections.append("")
+                sections.append(time_desc.upper())
+                sections.append("")
+                current_day = activity_day
+            
+            sections.append(activity)
+        
+        sections.append("")
+        sections.append("━━━━━━━━━━━━━━━")
+        
+        # Summary
+        sections.append(ui_get(content, "activity_summary", "📊 SUMMARY ({timeframe})").replace("{timeframe}", "Last 7 Days" if timeframe == "7d" else "Last 24h"))
+        sections.append(ui_get(content, "activity_new_members_count", "👋 New Members: {count}").replace("{count}", str(len(new_members))))
+        sections.append(ui_get(content, "activity_links_set_count", "🔗 Links Set: {count}").replace("{count}", str(len(link_setters))))
+        sections.append(ui_get(content, "activity_step1_count", "✅ Step 1 Confirmed: {count}").replace("{count}", str(len(step1_confirmed))))
+    else:
+        sections.append(ui_get(content, "no_recent_activity", "No activity in this timeframe yet."))
+        sections.append("")
+        sections.append(ui_get(content, "share_to_grow", "Share your invite link to grow your team! 🚀"))
+    
+    full_text = "\n".join(sections)
+    
+    await safe_show_menu_message(query, context, full_text, activity_feed_kb(content, timeframe))
+
+
+def get_relative_time(timestamp) -> str:
+    """Get relative time description (Today, Yesterday, etc)."""
+    from datetime import datetime as dt, timedelta
+    now = dt.now()
+    
+    if timestamp.date() == now.date():
+        return "Today"
+    elif timestamp.date() == (now - timedelta(days=1)).date():
+        return "Yesterday"
+    else:
+        days_ago = (now - timestamp).days
+        if days_ago <= 7:
+            return f"{days_ago} days ago"
+        else:
+            return timestamp.strftime("%b %d")
+
+
+def get_member_code(telegram_id: int) -> str:
+    """Get member's 6-char code or return generic identifier."""
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    cur.execute("SELECT ref_code FROM referrers WHERE owner_telegram_id = ?", (telegram_id,))
+    result = cur.fetchone()
+    conn.close()
+    
+    if result:
+        return result["ref_code"]
+    else:
+        # Return last 3 digits of telegram_id for privacy
+        return f"***{str(telegram_id)[-3:]}"
+
+
+def is_admin(user_id: int) -> bool:
+    """Check if user is an admin."""
+    admin_ids_str = os.getenv("ADMIN_IDS", "")
+    if not admin_ids_str:
+        return False
+    
+    admin_ids = [int(x.strip()) for x in admin_ids_str.split(",") if x.strip().isdigit()]
+    return user_id in admin_ids
+
+
+def can_analyze_member(analyzer_id: int, target_code: str) -> bool:
+    """Check if analyzer has permission to view target member's stats.
+    
+    Rules:
+    - Admins can see everyone
+    - Users can ONLY see their downline (NOT upline/sponsor)
+    - Cannot see other teams
+    """
+    # Admin override
+    if is_admin(analyzer_id):
+        return True
+    
+    # Check if target exists
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    cur.execute("SELECT owner_telegram_id FROM referrers WHERE ref_code = ?", (target_code,))
+    target_result = cur.fetchone()
+    
+    if not target_result:
+        conn.close()
+        return False
+    
+    target_id = target_result["owner_telegram_id"]
+    
+    # Check if target is in analyzer's downline
+    # Get analyzer's ref code
+    cur.execute("SELECT ref_code FROM referrers WHERE owner_telegram_id = ?", (analyzer_id,))
+    analyzer_result = cur.fetchone()
+    
+    if not analyzer_result:
+        conn.close()
+        return False
+    
+    analyzer_code = analyzer_result["ref_code"]
+    
+    # Recursively check if target is in downline
+    def is_descendant(ancestor_code, descendant_id, depth=0):
+        """Check if descendant_id is in the downline of ancestor_code."""
+        if depth > 20:  # Prevent infinite recursion
+            return False
+        
+        # Get all direct referrals of ancestor
+        cur.execute("SELECT telegram_user_id FROM users WHERE sponsor_code = ?", (ancestor_code,))
+        direct_refs = cur.fetchall()
+        
+        for ref in direct_refs:
+            ref_id = ref["telegram_user_id"]
+            
+            # Found it!
+            if ref_id == descendant_id:
+                return True
+            
+            # Check if this referral has a code (is an affiliate)
+            cur.execute("SELECT ref_code FROM referrers WHERE owner_telegram_id = ?", (ref_id,))
+            ref_code_result = cur.fetchone()
+            
+            if ref_code_result:
+                # Recursively check their downline
+                if is_descendant(ref_code_result["ref_code"], descendant_id, depth + 1):
+                    return True
+        
+        return False
+    
+    result = is_descendant(analyzer_code, target_id)
+    conn.close()
+    
+    return result
+
+
+async def show_member_analysis(message, context, content, member_code: str):
+    """Show detailed analysis of a team member."""
+    # Get member's stats
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    cur.execute("SELECT owner_telegram_id FROM referrers WHERE ref_code = ?", (member_code,))
+    result = cur.fetchone()
+    
+    if not result:
+        await message.reply_text(
+            ui_get(content, "member_not_found", "❌ Member not found. Check the code and try again."),
+            reply_markup=analyze_member_kb(content)
+        )
+        conn.close()
+        return
+    
+    member_id = result["owner_telegram_id"]
+    conn.close()
+    
+    # Get their personal stats
+    stats = get_personal_stats(member_id)
+    
+    if not stats:
+        await message.reply_text(
+            ui_get(content, "member_stats_unavailable", "❌ Stats not available for this member."),
+            reply_markup=analyze_member_kb(content)
+        )
+        return
+    
+    # Build analysis display
+    sections = []
+    
+    sections.append(ui_get(content, "member_analysis_title", "🔍 MEMBER ANALYSIS"))
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━")
+    sections.append(ui_get(content, "member_info_section", "👤 MEMBER {code}").replace("{code}", member_code))
+    sections.append("━━━━━━━━━━━━━━━")
+    
+    # Status
+    status = ui_get(content, "status_active", "✅ Active Affiliate")
+    sections.append(ui_get(content, "member_status", "Status: {status}").replace("{status}", status))
+    sections.append("")
+    
+    sections.append("━━━━━━━━━━━━━━━")
+    sections.append(ui_get(content, "performance_section", "📊 PERFORMANCE"))
+    sections.append("━━━━━━━━━━━━━━━")
+    
+    # Rank
+    percentile_desc = ui_get(content, "top_percent", "Top {percent}%").replace("{percent}", str(stats["percentile"]))
+    sections.append(ui_get(content, "member_rank", "Rank: #{rank} of {total} ({percentile})").replace("{rank}", str(stats["rank"])).replace("{total}", str(stats["total_affiliates"])).replace("{percentile}", percentile_desc))
+    
+    # Team
+    sections.append(ui_get(content, "member_team_size", "Team Members: {members}").replace("{members}", str(stats["active_members"])))
+    sections.append(ui_get(content, "member_visitors", "Unique Visitors: {visitors}").replace("{visitors}", str(stats["visitors"])))
+    sections.append(ui_get(content, "member_conversion", "Conversion: {conversion}%").replace("{conversion}", str(stats["conversion"])))
+    
+    # Activity
+    sections.append(ui_get(content, "member_activity", "Activity Score: {stars} ({score}/5)").replace("{stars}", stats["activity_stars"]).replace("{score}", str(stats["activity_score"])))
+    
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━")
+    sections.append(ui_get(content, "comparison_section", "🎯 COMPARISON"))
+    sections.append("━━━━━━━━━━━━━━━")
+    
+    # Get averages for comparison
+    avg_stats = get_average_stats()
+    top10_stats = get_top10_stats()
+    
+    # vs Average
+    if stats["active_members"] > avg_stats["avg_members"]:
+        vs_avg = ui_get(content, "above_average", "+{percent}% above average").replace("{percent}", str(int((stats["active_members"] / avg_stats["avg_members"] - 1) * 100)))
+    else:
+        vs_avg = ui_get(content, "below_average", "Below average")
+    
+    sections.append(ui_get(content, "member_vs_avg", "vs Average: {comparison}").replace("{comparison}", vs_avg))
+    
+    # vs Top 10%
+    progress_to_top10 = int((stats["active_members"] / top10_stats["top10_members"] * 100)) if top10_stats["top10_members"] > 0 else 0
+    sections.append(ui_get(content, "member_vs_top10", "vs Top 10%: {percent}% there").replace("{percent}", str(min(100, progress_to_top10))))
+    
+    # Insights
+    sections.append("")
+    sections.append("━━━━━━━━━━━━━━━")
+    sections.append(ui_get(content, "member_insights", "💡 INSIGHTS"))
+    sections.append("━━━━━━━━━━━━━━━")
+    
+    insights = []
+    if stats["conversion"] > avg_stats["avg_conversion"]:
+        insights.append(ui_get(content, "insight_good_conversion", "• Strong converter"))
+    if stats["active_members"] > avg_stats["avg_members"]:
+        insights.append(ui_get(content, "insight_good_recruiter", "• Above average recruiter"))
+    if stats["percentile"] <= 25:
+        insights.append(ui_get(content, "insight_top_performer", "• Top 25% performer"))
+    
+    if insights:
+        for insight in insights:
+            sections.append(insight)
+    else:
+        sections.append(ui_get(content, "insight_growing", "• Growing team"))
+    
+    full_text = "\n".join(sections)
+    
+    await message.reply_text(full_text, reply_markup=analyze_member_kb(content))
+
+
+async def show_analyze_member_prompt(query, context, content, user_id: int):
+    """Show prompt to enter member code for analysis."""
+    # Store that we're waiting for code input
+    context.user_data["awaiting_member_code"] = True
+    context.user_data["analyzer_user_id"] = user_id
+    
+    prompt = ui_get(content, "analyze_member_prompt", "🔍 ANALYZE TEAM MEMBER\n\nEnter the 6-character member code:")
+    
+    await safe_show_menu_message(
+        query,
+        context,
+        prompt,
+        analyze_member_kb(content)
+    )
 
 
 async def on_action_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
