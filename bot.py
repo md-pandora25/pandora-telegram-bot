@@ -1006,6 +1006,7 @@ def team_stats_hub_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(ui_get(content, "btn_team_details", "👥 Team Details"), callback_data="mystats:team_details")],
         [InlineKeyboardButton(ui_get(content, "btn_team_comparison", "📊 Team Comparison"), callback_data="mystats:team_comparison")],
         [InlineKeyboardButton(ui_get(content, "btn_activity_feed", "🔔 Activity Feed"), callback_data="mystats:activity_feed")],
+        [InlineKeyboardButton(ui_get(content, "btn_member_list", "📋 Member List"), callback_data="mystats:member_list")],
         [InlineKeyboardButton(ui_get(content, "btn_analyze_member", "🔍 Analyze Team Member"), callback_data="mystats:analyze_member")],
         [InlineKeyboardButton(ui_get(content, "back_to_my_stats", "⬅️ Back to My Stats"), callback_data="mystats:hub")],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
@@ -1047,6 +1048,14 @@ def activity_feed_kb(content: Dict[str, Any], timeframe: str = "24h") -> InlineK
 
 def analyze_member_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     """Analyze Member screen keyboard."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "back_to_team_stats", "⬅️ Back to Team Stats"), callback_data="mystats:team_hub")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+
+
+def member_list_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Member List screen keyboard."""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(ui_get(content, "back_to_team_stats", "⬅️ Back to Team Stats"), callback_data="mystats:team_hub")],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
@@ -2593,6 +2602,10 @@ async def on_mystats_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         timeframe = "7d" if action == "activity_7d" else "24h"
         await show_activity_feed(query, context, content, user_id, timeframe)
     
+    elif action == "member_list":
+        # Member List screen
+        await show_member_list(query, context, content, user_id)
+    
     elif action == "analyze_member":
         # Analyze Team Member screen
         await show_analyze_member_prompt(query, context, content, user_id)
@@ -3400,6 +3413,26 @@ async def show_member_analysis(message, context, content, member_code: str):
         
         logger.info(f"Found member {member_code} with ID {member_id}")
         
+        # Get Telegram user info
+        try:
+            from telegram import Bot
+            bot = context.bot
+            telegram_user = await bot.get_chat(member_id)
+            
+            # Build name display
+            full_name = telegram_user.first_name or ""
+            if telegram_user.last_name:
+                full_name += f" {telegram_user.last_name}"
+            
+            # Get username (may be None)
+            username = telegram_user.username
+            
+            logger.info(f"Retrieved Telegram info - Name: {full_name}, Username: {username}")
+        except Exception as e:
+            logger.warning(f"Could not retrieve Telegram info for {member_id}: {e}")
+            full_name = None
+            username = None
+        
         # Get their personal stats
         stats = get_personal_stats(member_id)
         
@@ -3420,6 +3453,14 @@ async def show_member_analysis(message, context, content, member_code: str):
         sections.append("━━━━━━━━━━━━━━━")
         sections.append(ui_get(content, "member_info_section", "👤 MEMBER {code}").replace("{code}", member_code))
         sections.append("━━━━━━━━━━━━━━━")
+        
+        # Show name if available
+        if full_name:
+            sections.append(ui_get(content, "member_name", "Name: {name}").replace("{name}", full_name))
+        
+        # Show username if available
+        if username:
+            sections.append(ui_get(content, "member_username", "Telegram: @{username}").replace("{username}", username))
         
         # Status
         status = ui_get(content, "status_active", "✅ Active Affiliate")
@@ -3515,6 +3556,171 @@ async def show_member_analysis(message, context, content, member_code: str):
     full_text = "\n".join(sections)
     
     await message.reply_text(full_text, reply_markup=analyze_member_kb(content))
+
+
+async def show_member_list(query, context, content, user_id: int):
+    """Show complete list of all downline members with codes, names, and usernames."""
+    try:
+        # Get user's referral code
+        ref = get_referrer_by_owner(user_id)
+        if not ref:
+            await safe_show_menu_message(
+                query,
+                context,
+                ui_get(content, "ref_not_set", "Set your links first."),
+                back_to_menu_kb(content)
+            )
+            return
+        
+        ref_code = ref["ref_code"]
+        
+        # Get all downline members recursively
+        def get_all_downline(sponsor_code, depth=0, max_depth=20):
+            """Recursively get all members in downline."""
+            if depth > max_depth:
+                return []
+            
+            conn = db_connect()
+            cur = conn.cursor()
+            
+            # Get direct referrals
+            cur.execute("""
+                SELECT u.telegram_user_id
+                FROM users u
+                WHERE u.sponsor_code = ?
+            """, (sponsor_code,))
+            
+            direct_refs = cur.fetchall()
+            conn.close()
+            
+            all_members = []
+            
+            for ref_row in direct_refs:
+                member_id = ref_row["telegram_user_id"]
+                
+                # Get their ref code if they're an affiliate
+                conn = db_connect()
+                cur = conn.cursor()
+                cur.execute("SELECT ref_code FROM referrers WHERE owner_telegram_id = ?", (member_id,))
+                member_ref = cur.fetchone()
+                conn.close()
+                
+                if member_ref:
+                    member_code = member_ref["ref_code"]
+                    all_members.append({
+                        "code": member_code,
+                        "telegram_id": member_id,
+                        "depth": depth
+                    })
+                    
+                    # Recursively get their downline
+                    downline = get_all_downline(member_code, depth + 1, max_depth)
+                    all_members.extend(downline)
+            
+            return all_members
+        
+        logger.info(f"Getting member list for {ref_code}")
+        members = get_all_downline(ref_code)
+        logger.info(f"Found {len(members)} downline members")
+        
+        if not members:
+            await safe_show_menu_message(
+                query,
+                context,
+                ui_get(content, "no_team_members", "📋 MEMBER LIST\n\nYou don't have any team members yet.\n\nShare your invite link to build your team! 🚀"),
+                member_list_kb(content)
+            )
+            return
+        
+        # Get Telegram info for each member
+        bot = context.bot
+        member_details = []
+        
+        for member in members[:100]:  # Limit to 100 for performance
+            try:
+                telegram_user = await bot.get_chat(member["telegram_id"])
+                
+                # Build name
+                full_name = telegram_user.first_name or ""
+                if telegram_user.last_name:
+                    full_name += f" {telegram_user.last_name}"
+                
+                username = telegram_user.username
+                
+                member_details.append({
+                    "code": member["code"],
+                    "name": full_name if full_name else ui_get(content, "no_name", "No name"),
+                    "username": username,
+                    "depth": member["depth"]
+                })
+            except Exception as e:
+                logger.warning(f"Could not get info for member {member['code']}: {e}")
+                member_details.append({
+                    "code": member["code"],
+                    "name": ui_get(content, "name_unavailable", "Name unavailable"),
+                    "username": None,
+                    "depth": member["depth"]
+                })
+        
+        # Build display
+        sections = []
+        sections.append(ui_get(content, "member_list_title", "📋 MEMBER LIST"))
+        sections.append("")
+        sections.append(ui_get(content, "member_list_count", "Total Team Members: {count}").replace("{count}", str(len(member_details))))
+        sections.append("━━━━━━━━━━━━━━━")
+        sections.append("")
+        
+        # Sort by depth (direct members first)
+        member_details.sort(key=lambda x: (x["depth"], x["name"]))
+        
+        current_level = None
+        for member in member_details:
+            # Add level header
+            if member["depth"] != current_level:
+                if current_level is not None:
+                    sections.append("")
+                
+                level_name = ui_get(content, "level_direct", "DIRECT MEMBERS") if member["depth"] == 0 else ui_get(content, "level_indirect", "LEVEL {level} MEMBERS").replace("{level}", str(member["depth"] + 1))
+                sections.append(level_name)
+                sections.append("")
+                current_level = member["depth"]
+            
+            # Add member entry
+            indent = "  " * member["depth"]  # Indent based on depth
+            
+            member_line = f"{indent}• {member['code']}"
+            
+            if member["name"]:
+                member_line += f" - {member['name']}"
+            
+            if member["username"]:
+                member_line += f" (@{member['username']})"
+            
+            sections.append(member_line)
+        
+        sections.append("")
+        sections.append("━━━━━━━━━━━━━━━")
+        sections.append(ui_get(content, "member_list_tip", "💡 Copy a code to analyze that member"))
+        
+        full_text = "\n".join(sections)
+        
+        # Check if message is too long (Telegram limit is ~4096 chars)
+        if len(full_text) > 4000:
+            # Split into multiple messages or truncate
+            sections.append("")
+            sections.append(ui_get(content, "list_truncated", "⚠️ List truncated - showing first 100 members"))
+            full_text = "\n".join(sections[:100])  # Truncate to fit
+        
+        await safe_show_menu_message(query, context, full_text, member_list_kb(content))
+        
+    except Exception as e:
+        logger.error(f"Error in show_member_list: {e}", exc_info=True)
+        await safe_show_menu_message(
+            query,
+            context,
+            f"❌ Error loading member list: {str(e)}",
+            member_list_kb(content)
+        )
 
 
 async def show_analyze_member_prompt(query, context, content, user_id: int):
