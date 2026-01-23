@@ -1080,7 +1080,7 @@ def share_template_styles_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(ui_get(content, "btn_question_hook", "❓ Question Hook"), callback_data="share_tpl:question")],
         [InlineKeyboardButton(ui_get(content, "btn_value_first", "📚 Value First"), callback_data="share_tpl:value")],
         [InlineKeyboardButton(ui_get(content, "btn_social_media", "📱 Social Media Post"), callback_data="share_tpl:social_media")],
-        [InlineKeyboardButton(ui_get(content, "btn_back", "⬅️ Back"), callback_data="affiliate:menu")]
+        [InlineKeyboardButton(ui_get(content, "btn_back", "⬅️ Back"), callback_data="menu:affiliate_tools")]
     ])
 
 
@@ -1099,7 +1099,7 @@ def share_template_actions_kb(content: Dict[str, Any], style: str, option: int) 
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(ui_get(content, "btn_view_another_option", "👀 View Another Option"), callback_data=f"share_tpl:{style}")],
         [InlineKeyboardButton(ui_get(content, "btn_view_another_template", "🔄 View Another Template"), callback_data="share_tpl:choose")],
-        [InlineKeyboardButton(ui_get(content, "btn_back_to_menu", "🏠 Main Menu"), callback_data="main_menu")]
+        [InlineKeyboardButton(ui_get(content, "btn_back_to_menu", "🏠 Main Menu"), callback_data="menu:home")]
     ])
 
 
