@@ -2366,16 +2366,29 @@ async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         
         target_code = msg.upper()
         
+        # Debug: Log the attempt
+        logger.info(f"User {analyzer_id} attempting to analyze code {target_code}")
+        
         # Check if user has permission to analyze this member
-        if not can_analyze_member(analyzer_id, target_code):
+        try:
+            can_access = can_analyze_member(analyzer_id, target_code)
+            logger.info(f"Permission check result: {can_access}")
+            
+            if not can_access:
+                await update.message.reply_text(
+                    ui_get(content, "analyze_access_denied", "⚠️ ACCESS DENIED\n\nYou can only analyze members in your downline (your team).\n\nThis code is outside your team."),
+                    reply_markup=analyze_member_kb(content)
+                )
+                return
+            
+            # Show member analysis
+            await show_member_analysis(update.message, context, content, target_code)
+        except Exception as e:
+            logger.error(f"Error in member analysis: {e}")
             await update.message.reply_text(
-                ui_get(content, "analyze_access_denied", "⚠️ ACCESS DENIED\n\nYou can only analyze members in your downline (your team).\n\nThis code is outside your team."),
+                f"❌ Error analyzing member: {str(e)}\n\nPlease try again or contact support.",
                 reply_markup=analyze_member_kb(content)
             )
-            return
-        
-        # Show member analysis
-        await show_member_analysis(update.message, context, content, target_code)
         return
 
     # Handle Step 1 URL capture
@@ -3366,88 +3379,122 @@ def can_analyze_member(analyzer_id: int, target_code: str) -> bool:
 
 async def show_member_analysis(message, context, content, member_code: str):
     """Show detailed analysis of a team member."""
-    # Get member's stats
-    conn = db_connect()
-    cur = conn.cursor()
-    
-    cur.execute("SELECT owner_telegram_id FROM referrers WHERE ref_code = ?", (member_code,))
-    result = cur.fetchone()
-    
-    if not result:
-        await message.reply_text(
-            ui_get(content, "member_not_found", "❌ Member not found. Check the code and try again."),
-            reply_markup=analyze_member_kb(content)
-        )
+    try:
+        # Get member's stats
+        conn = db_connect()
+        cur = conn.cursor()
+        
+        cur.execute("SELECT owner_telegram_id FROM referrers WHERE ref_code = ?", (member_code,))
+        result = cur.fetchone()
+        
+        if not result:
+            await message.reply_text(
+                ui_get(content, "member_not_found", "❌ Member not found. Check the code and try again."),
+                reply_markup=analyze_member_kb(content)
+            )
+            conn.close()
+            return
+        
+        member_id = result["owner_telegram_id"]
         conn.close()
-        return
-    
-    member_id = result["owner_telegram_id"]
-    conn.close()
-    
-    # Get their personal stats
-    stats = get_personal_stats(member_id)
-    
-    if not stats:
+        
+        logger.info(f"Found member {member_code} with ID {member_id}")
+        
+        # Get their personal stats
+        stats = get_personal_stats(member_id)
+        
+        logger.info(f"Stats retrieved: {stats is not None}")
+        
+        if not stats:
+            await message.reply_text(
+                ui_get(content, "member_stats_unavailable", "❌ Stats not available for this member."),
+                reply_markup=analyze_member_kb(content)
+            )
+            return
+        
+        # Build analysis display
+        sections = []
+        
+        sections.append(ui_get(content, "member_analysis_title", "🔍 MEMBER ANALYSIS"))
+        sections.append("")
+        sections.append("━━━━━━━━━━━━━━━")
+        sections.append(ui_get(content, "member_info_section", "👤 MEMBER {code}").replace("{code}", member_code))
+        sections.append("━━━━━━━━━━━━━━━")
+        
+        # Status
+        status = ui_get(content, "status_active", "✅ Active Affiliate")
+        sections.append(ui_get(content, "member_status", "Status: {status}").replace("{status}", status))
+        sections.append("")
+        
+        sections.append("━━━━━━━━━━━━━━━")
+        sections.append(ui_get(content, "performance_section", "📊 PERFORMANCE"))
+        sections.append("━━━━━━━━━━━━━━━")
+        
+        # Rank
+        percentile_desc = ui_get(content, "top_percent", "Top {percent}%").replace("{percent}", str(stats["percentile"]))
+        sections.append(ui_get(content, "member_rank", "Rank: #{rank} of {total} ({percentile})").replace("{rank}", str(stats["rank"])).replace("{total}", str(stats["total_affiliates"])).replace("{percentile}", percentile_desc))
+        
+        # Team
+        sections.append(ui_get(content, "member_team_size", "Team Members: {members}").replace("{members}", str(stats["active_members"])))
+        sections.append(ui_get(content, "member_visitors", "Unique Visitors: {visitors}").replace("{visitors}", str(stats["visitors"])))
+        sections.append(ui_get(content, "member_conversion", "Conversion: {conversion}%").replace("{conversion}", str(stats["conversion"])))
+        
+        # Activity
+        sections.append(ui_get(content, "member_activity", "Activity Score: {stars} ({score}/5)").replace("{stars}", stats["activity_stars"]).replace("{score}", str(stats["activity_score"])))
+        
+        sections.append("")
+        sections.append("━━━━━━━━━━━━━━━")
+        sections.append(ui_get(content, "comparison_section", "🎯 COMPARISON"))
+        sections.append("━━━━━━━━━━━━━━━")
+        
+        # Get averages for comparison
+        avg_stats = get_average_stats()
+        top10_stats = get_top10_stats()
+        
+        # vs Average
+        if stats["active_members"] > avg_stats["avg_members"]:
+            vs_avg = ui_get(content, "above_average", "+{percent}% above average").replace("{percent}", str(int((stats["active_members"] / avg_stats["avg_members"] - 1) * 100)))
+        else:
+            vs_avg = ui_get(content, "below_average", "Below average")
+        
+        sections.append(ui_get(content, "member_vs_avg", "vs Average: {comparison}").replace("{comparison}", vs_avg))
+        
+        # vs Top 10%
+        progress_to_top10 = int((stats["active_members"] / top10_stats["top10_members"] * 100)) if top10_stats["top10_members"] > 0 else 0
+        sections.append(ui_get(content, "member_vs_top10", "vs Top 10%: {percent}% there").replace("{percent}", str(min(100, progress_to_top10))))
+        
+        # Insights
+        sections.append("")
+        sections.append("━━━━━━━━━━━━━━━")
+        sections.append(ui_get(content, "member_insights", "💡 INSIGHTS"))
+        sections.append("━━━━━━━━━━━━━━━")
+        
+        insights = []
+        if stats["conversion"] > avg_stats["avg_conversion"]:
+            insights.append(ui_get(content, "insight_good_conversion", "• Strong converter"))
+        if stats["active_members"] > avg_stats["avg_members"]:
+            insights.append(ui_get(content, "insight_good_recruiter", "• Above average recruiter"))
+        if stats["percentile"] <= 25:
+            insights.append(ui_get(content, "insight_top_performer", "• Top 25% performer"))
+        
+        if insights:
+            for insight in insights:
+                sections.append(insight)
+        else:
+            sections.append(ui_get(content, "insight_growing", "• Growing team"))
+        
+        full_text = "\n".join(sections)
+        
+        logger.info(f"Sending analysis for {member_code}, text length: {len(full_text)}")
+        
+        await message.reply_text(full_text, reply_markup=analyze_member_kb(content))
+        
+    except Exception as e:
+        logger.error(f"Error in show_member_analysis: {e}", exc_info=True)
         await message.reply_text(
-            ui_get(content, "member_stats_unavailable", "❌ Stats not available for this member."),
+            f"❌ Error showing analysis: {str(e)}\n\nPlease contact support.",
             reply_markup=analyze_member_kb(content)
         )
-        return
-    
-    # Build analysis display
-    sections = []
-    
-    sections.append(ui_get(content, "member_analysis_title", "🔍 MEMBER ANALYSIS"))
-    sections.append("")
-    sections.append("━━━━━━━━━━━━━━━")
-    sections.append(ui_get(content, "member_info_section", "👤 MEMBER {code}").replace("{code}", member_code))
-    sections.append("━━━━━━━━━━━━━━━")
-    
-    # Status
-    status = ui_get(content, "status_active", "✅ Active Affiliate")
-    sections.append(ui_get(content, "member_status", "Status: {status}").replace("{status}", status))
-    sections.append("")
-    
-    sections.append("━━━━━━━━━━━━━━━")
-    sections.append(ui_get(content, "performance_section", "📊 PERFORMANCE"))
-    sections.append("━━━━━━━━━━━━━━━")
-    
-    # Rank
-    percentile_desc = ui_get(content, "top_percent", "Top {percent}%").replace("{percent}", str(stats["percentile"]))
-    sections.append(ui_get(content, "member_rank", "Rank: #{rank} of {total} ({percentile})").replace("{rank}", str(stats["rank"])).replace("{total}", str(stats["total_affiliates"])).replace("{percentile}", percentile_desc))
-    
-    # Team
-    sections.append(ui_get(content, "member_team_size", "Team Members: {members}").replace("{members}", str(stats["active_members"])))
-    sections.append(ui_get(content, "member_visitors", "Unique Visitors: {visitors}").replace("{visitors}", str(stats["visitors"])))
-    sections.append(ui_get(content, "member_conversion", "Conversion: {conversion}%").replace("{conversion}", str(stats["conversion"])))
-    
-    # Activity
-    sections.append(ui_get(content, "member_activity", "Activity Score: {stars} ({score}/5)").replace("{stars}", stats["activity_stars"]).replace("{score}", str(stats["activity_score"])))
-    
-    sections.append("")
-    sections.append("━━━━━━━━━━━━━━━")
-    sections.append(ui_get(content, "comparison_section", "🎯 COMPARISON"))
-    sections.append("━━━━━━━━━━━━━━━")
-    
-    # Get averages for comparison
-    avg_stats = get_average_stats()
-    top10_stats = get_top10_stats()
-    
-    # vs Average
-    if stats["active_members"] > avg_stats["avg_members"]:
-        vs_avg = ui_get(content, "above_average", "+{percent}% above average").replace("{percent}", str(int((stats["active_members"] / avg_stats["avg_members"] - 1) * 100)))
-    else:
-        vs_avg = ui_get(content, "below_average", "Below average")
-    
-    sections.append(ui_get(content, "member_vs_avg", "vs Average: {comparison}").replace("{comparison}", vs_avg))
-    
-    # vs Top 10%
-    progress_to_top10 = int((stats["active_members"] / top10_stats["top10_members"] * 100)) if top10_stats["top10_members"] > 0 else 0
-    sections.append(ui_get(content, "member_vs_top10", "vs Top 10%: {percent}% there").replace("{percent}", str(min(100, progress_to_top10))))
-    
-    # Insights
-    sections.append("")
-    sections.append("━━━━━━━━━━━━━━━")
     sections.append(ui_get(content, "member_insights", "💡 INSIGHTS"))
     sections.append("━━━━━━━━━━━━━━━")
     
