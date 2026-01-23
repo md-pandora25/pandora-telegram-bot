@@ -1071,6 +1071,48 @@ def activity_help_popup_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     ])
 
 
+def share_template_styles_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
+    """Keyboard for choosing share template style."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "btn_casual_friend", "👋 Casual Friend"), callback_data="share_tpl:casual")],
+        [InlineKeyboardButton(ui_get(content, "btn_professional", "💼 Professional"), callback_data="share_tpl:professional")],
+        [InlineKeyboardButton(ui_get(content, "btn_social_proof", "🚀 Social Proof"), callback_data="share_tpl:social_proof")],
+        [InlineKeyboardButton(ui_get(content, "btn_question_hook", "❓ Question Hook"), callback_data="share_tpl:question")],
+        [InlineKeyboardButton(ui_get(content, "btn_value_first", "📚 Value First"), callback_data="share_tpl:value")],
+        [InlineKeyboardButton(ui_get(content, "btn_social_media", "📱 Social Media Post"), callback_data="share_tpl:social_media")],
+        [InlineKeyboardButton(ui_get(content, "btn_back", "⬅️ Back"), callback_data="affiliate:menu")]
+    ])
+
+
+def share_template_options_kb(content: Dict[str, Any], style: str) -> InlineKeyboardMarkup:
+    """Keyboard for choosing which option of a template style."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "btn_option_1", "Option 1"), callback_data=f"share_opt:{style}:1")],
+        [InlineKeyboardButton(ui_get(content, "btn_option_2", "Option 2"), callback_data=f"share_opt:{style}:2")],
+        [InlineKeyboardButton(ui_get(content, "btn_option_3", "Option 3"), callback_data=f"share_opt:{style}:3")],
+        [InlineKeyboardButton(ui_get(content, "btn_back", "⬅️ Back to Styles"), callback_data="share_tpl:choose")]
+    ])
+
+
+def share_template_actions_kb(content: Dict[str, Any], style: str, option: int) -> InlineKeyboardMarkup:
+    """Keyboard for actions on a selected template."""
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "btn_view_another_option", "👀 View Another Option"), callback_data=f"share_tpl:{style}")],
+        [InlineKeyboardButton(ui_get(content, "btn_view_another_template", "🔄 View Another Template"), callback_data="share_tpl:choose")],
+        [InlineKeyboardButton(ui_get(content, "btn_back_to_menu", "🏠 Main Menu"), callback_data="main_menu")]
+    ])
+
+
+def get_share_template(style: str, option: int, content: Dict[str, Any]) -> str:
+    """Get a specific share template by style and option number."""
+    template_key = f"share_template_{style}_{option}"
+    
+    # Fallback template in case string is missing
+    fallback = "Check out Pandora AI - automated copytrading with 10X deposit amplification!\n\n{LINK}"
+    
+    return ui_get(content, template_key, fallback)
+
+
 def links_list_kb(content: Dict[str, Any], items: List[Dict[str, str]], back_target: str) -> InlineKeyboardMarkup:
     keyboard: List[List[InlineKeyboardButton]] = []
     for item in items:
@@ -1894,11 +1936,31 @@ async def on_invite_click(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), back_to_menu_kb(content))
         return
 
-    if data == "invite:share":
-        # Share invite link (original functionality)
-        invite = build_invite_link(ref["ref_code"], content)
-        share_text = ui_get(content, "ref_share_text", "Share your invite:\n\n{invite}").replace("{invite}", invite)
-        await safe_show_menu_message(query, context, share_text, back_to_menu_kb(content))
+    if data == "invite:share" or data == "affiliate:share_invite":
+        # New share templates system - show style chooser
+        await show_share_template_chooser(query, context, content, user_id)
+        return
+    
+    # Handle share template style selection
+    if data.startswith("share_tpl:"):
+        action = data.split(":", 1)[1]
+        
+        if action == "choose":
+            # Show template styles menu
+            await show_share_template_chooser(query, context, content, user_id)
+            return
+        else:
+            # Show options for selected style
+            await show_share_template_options(query, context, content, user_id, action)
+            return
+    
+    # Handle share template option selection
+    if data.startswith("share_opt:"):
+        parts = data.split(":")
+        style = parts[1]
+        option = int(parts[2])
+        
+        await show_share_template_message(query, context, content, user_id, style, option)
         return
 
     if data == "invite:check_links":
@@ -3014,12 +3076,12 @@ async def show_my_actions(query, context, content, user_id: int):
     # 5. REACH NEXT MILESTONE (Very High Impact if within 5 of milestone)
     milestones = [10, 25, 50, 100, 250, 500]
     for milestone in milestones:
-        if stats["visitors"] < milestone:
-            gap = milestone - stats["visitors"]
+        if stats["active_members"] < milestone:
+            gap = milestone - stats["active_members"]
             if gap <= 5:
                 # Impact: Very high when close to milestone
                 impact = 100 - (gap * 10)
-                unit = ui_get(content, "visitors_unit", "visitors")
+                unit = ui_get(content, "members_unit", "members")
                 all_suggestions.append({
                     "type": "milestone",
                     "impact": impact,
@@ -3222,12 +3284,12 @@ async def show_my_milestones(query, context, content, user_id: int):
     milestones = [10, 25, 50, 100, 250, 500]
     next_milestone = None
     for ms in milestones:
-        if stats["visitors"] < ms:
+        if stats["active_members"] < ms:
             next_milestone = ms
             break
     
     if next_milestone:
-        current = stats["visitors"]
+        current = stats["active_members"]
         remaining = next_milestone - current
         percentage = int((current / next_milestone) * 100)
         
@@ -3262,43 +3324,43 @@ async def show_my_milestones(query, context, content, user_id: int):
     
     # Achievements Section
     unlocked_count = 0
-    total_achievements = 15
+    total_achievements = 18
     
     # Check which achievements are unlocked
     achievements = []
     
     # First Steps
-    if stats["visitors"] >= 1:
+    if stats["active_members"] >= 1:
         achievements.append(("unlocked", ui_get(content, "achievement_first_steps", "✅ First Steps - Made 1st referral")))
         unlocked_count += 1
     
     # Team Builder milestones
-    if stats["visitors"] >= 10:
+    if stats["active_members"] >= 10:
         achievements.append(("unlocked", ui_get(content, "achievement_team_builder_10", "✅ Team Builder - 10 members")))
         unlocked_count += 1
-    elif stats["visitors"] >= 5:
-        progress = int((stats["visitors"] / 10) * 100)
+    elif stats["active_members"] >= 5:
+        progress = int((stats["active_members"] / 10) * 100)
         achievements.append(("locked", ui_get(content, "locked_achievement", "🔒 {title} ({progress}%)").replace("{title}", "Team Builder - 10 members").replace("{progress}", str(progress))))
     
-    if stats["visitors"] >= 25:
+    if stats["active_members"] >= 25:
         achievements.append(("unlocked", ui_get(content, "achievement_team_builder_25", "✅ Growing Strong - 25 members")))
         unlocked_count += 1
-    elif stats["visitors"] >= 15:
-        progress = int((stats["visitors"] / 25) * 100)
+    elif stats["active_members"] >= 15:
+        progress = int((stats["active_members"] / 25) * 100)
         achievements.append(("locked", ui_get(content, "locked_achievement", "🔒 {title} ({progress}%)").replace("{title}", "Growing Strong - 25 members").replace("{progress}", str(progress))))
     
-    if stats["visitors"] >= 50:
+    if stats["active_members"] >= 50:
         achievements.append(("unlocked", ui_get(content, "achievement_team_builder_50", "✅ Power Player - 50 members")))
         unlocked_count += 1
-    elif stats["visitors"] >= 35:
-        progress = int((stats["visitors"] / 50) * 100)
+    elif stats["active_members"] >= 35:
+        progress = int((stats["active_members"] / 50) * 100)
         achievements.append(("locked", ui_get(content, "locked_achievement", "🔒 {title} ({progress}%)").replace("{title}", "Power Player - 50 members").replace("{progress}", str(progress))))
     
-    if stats["visitors"] >= 100:
+    if stats["active_members"] >= 100:
         achievements.append(("unlocked", ui_get(content, "achievement_century_club", "✅ Century Club - 100 members")))
         unlocked_count += 1
-    elif stats["visitors"] >= 75:
-        progress = int((stats["visitors"] / 100) * 100)
+    elif stats["active_members"] >= 75:
+        progress = int((stats["active_members"] / 100) * 100)
         achievements.append(("locked", ui_get(content, "locked_achievement", "🔒 {title} ({progress}%)").replace("{title}", "Century Club - 100 members").replace("{progress}", str(progress))))
     
     # Ranking achievements
@@ -3342,6 +3404,19 @@ async def show_my_milestones(query, context, content, user_id: int):
         progress = int((stats["conversion"] / 90) * 100)
         achievements.append(("locked", ui_get(content, "locked_achievement", "🔒 {title} ({progress}%)").replace("{title}", "Conversion King - 90%+ conversion").replace("{progress}", str(progress))))
     
+    # Visitor-based achievements (Marketing/Reach)
+    if stats["visitors"] >= 50:
+        achievements.append(("unlocked", ui_get(content, "achievement_wide_reach", "✅ Wide Reach - 50 visitors")))
+        unlocked_count += 1
+    
+    if stats["visitors"] >= 100:
+        achievements.append(("unlocked", ui_get(content, "achievement_mass_attraction", "✅ Mass Attraction - 100 visitors")))
+        unlocked_count += 1
+    
+    if stats["visitors"] >= 250:
+        achievements.append(("unlocked", ui_get(content, "achievement_marketing_master", "✅ Marketing Master - 250 visitors")))
+        unlocked_count += 1
+    
     # Early adopter (placeholder - would check actual join date)
     achievements.append(("unlocked", ui_get(content, "achievement_early_adopter", "✅ Early Adopter - Joined early 2026")))
     unlocked_count += 1
@@ -3371,9 +3446,9 @@ async def show_my_milestones(query, context, content, user_id: int):
     # Generate recent wins based on stats
     wins = []
     
-    if stats["visitors"] >= 25:
+    if stats["active_members"] >= 25:
         win_text = ui_get(content, "win_reached_members", "✅ Reached {count} members ({time} ago)")
-        win_text = win_text.replace("{count}", str(stats["visitors"]))
+        win_text = win_text.replace("{count}", str(stats["active_members"]))
         win_text = win_text.replace("{time}", "recently")
         wins.append(win_text)
     
@@ -3399,6 +3474,97 @@ async def show_my_milestones(query, context, content, user_id: int):
     full_text = "\n".join(sections)
     
     await safe_show_menu_message(query, context, full_text, my_milestones_kb(content))
+
+
+async def show_share_template_chooser(query, context, content, user_id: int):
+    """Show the template style chooser screen."""
+    title = ui_get(content, "share_template_chooser_title", "💬 CHOOSE A SHARE STYLE")
+    intro = ui_get(content, "share_template_chooser_intro", "Select the style that matches how you want to share:")
+    
+    full_text = f"{title}\n\n{intro}"
+    
+    await safe_show_menu_message(
+        query,
+        context,
+        full_text,
+        share_template_styles_kb(content)
+    )
+
+
+async def show_share_template_options(query, context, content, user_id: int, style: str):
+    """Show the 3 options for a selected template style."""
+    # Get style name for display
+    style_names = {
+        "casual": ui_get(content, "style_name_casual", "👋 Casual Friend"),
+        "professional": ui_get(content, "style_name_professional", "💼 Professional"),
+        "social_proof": ui_get(content, "style_name_social_proof", "🚀 Social Proof"),
+        "question": ui_get(content, "style_name_question", "❓ Question Hook"),
+        "value": ui_get(content, "style_name_value", "📚 Value First"),
+        "social_media": ui_get(content, "style_name_social_media", "📱 Social Media")
+    }
+    
+    style_name = style_names.get(style, style.title())
+    
+    title = ui_get(content, "share_template_options_title", "{style} - Choose an Option").replace("{style}", style_name)
+    intro = ui_get(content, "share_template_options_intro", "Pick which version you like best:")
+    
+    full_text = f"{title}\n\n{intro}"
+    
+    await safe_show_menu_message(
+        query,
+        context,
+        full_text,
+        share_template_options_kb(content, style)
+    )
+
+
+async def show_share_template_message(query, context, content, user_id: int, style: str, option: int):
+    """Show the actual template message with copy functionality."""
+    # Get user's referral code
+    ref = get_referrer_by_owner(user_id)
+    if not ref:
+        await safe_show_menu_message(
+            query,
+            context,
+            ui_get(content, "ref_not_set", "Set your links first."),
+            back_to_menu_kb(content)
+        )
+        return
+    
+    # Build invite link
+    invite_link = build_invite_link(ref["ref_code"], content)
+    
+    # Get template
+    template = get_share_template(style, option, content)
+    
+    # Replace {LINK} placeholder
+    message = template.replace("{LINK}", invite_link)
+    
+    # Add header
+    style_names = {
+        "casual": ui_get(content, "style_name_casual", "👋 Casual Friend"),
+        "professional": ui_get(content, "style_name_professional", "💼 Professional"),
+        "social_proof": ui_get(content, "style_name_social_proof", "🚀 Social Proof"),
+        "question": ui_get(content, "style_name_question", "❓ Question Hook"),
+        "value": ui_get(content, "style_name_value", "📚 Value First"),
+        "social_media": ui_get(content, "style_name_social_media", "📱 Social Media")
+    }
+    
+    style_name = style_names.get(style, style.title())
+    
+    header = ui_get(content, "share_template_header", "{style} - Option {option}").replace("{style}", style_name).replace("{option}", str(option))
+    separator = "━━━━━━━━━━━━━━━"
+    
+    copy_instruction = ui_get(content, "share_template_copy_instruction", "📋 Copy the message below and share it:")
+    
+    full_text = f"{header}\n{separator}\n\n{copy_instruction}\n\n{message}"
+    
+    await safe_show_menu_message(
+        query,
+        context,
+        full_text,
+        share_template_actions_kb(content, style, option)
+    )
 
 
 def create_progress_bar(percentage: int, length: int = 10, context: str = "default") -> str:
@@ -3452,6 +3618,8 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(on_affiliate_click, pattern=r"^affiliate:"))
     app.add_handler(CallbackQueryHandler(on_mystats_click, pattern=r"^mystats:"))
     app.add_handler(CallbackQueryHandler(on_action_click, pattern=r"^action:"))
+    app.add_handler(CallbackQueryHandler(on_invite_click, pattern=r"^share_tpl:"))
+    app.add_handler(CallbackQueryHandler(on_invite_click, pattern=r"^share_opt:"))
     app.add_handler(CallbackQueryHandler(on_language_click, pattern=r"^lang:set:"))
     app.add_handler(CallbackQueryHandler(on_join_click, pattern=r"^join:"))
     app.add_handler(CallbackQueryHandler(on_faq_click, pattern=r"^(faq_topic:|faq_q:|faq_back_|faq_search:)"))
