@@ -1936,16 +1936,64 @@ async def moveuser_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         
         downline_count = count_downline(user_code)
         
-        # Show confirmation message
+        # Get Telegram names for better display
+        try:
+            # Get user's name
+            user_chat = await context.bot.get_chat(user_telegram_id)
+            user_name = user_chat.first_name or ""
+            if user_chat.last_name:
+                user_name += f" {user_chat.last_name}"
+            if not user_name:
+                user_name = "No name"
+        except Exception as e:
+            logger.warning(f"Could not get user name for {user_telegram_id}: {e}")
+            user_name = "Name unavailable"
+        
+        # Get new sponsor's name
+        try:
+            sponsor_chat = await context.bot.get_chat(sponsor_telegram_id)
+            new_sponsor_name = sponsor_chat.first_name or ""
+            if sponsor_chat.last_name:
+                new_sponsor_name += f" {sponsor_chat.last_name}"
+            if not new_sponsor_name:
+                new_sponsor_name = "No name"
+        except Exception as e:
+            logger.warning(f"Could not get sponsor name for {sponsor_telegram_id}: {e}")
+            new_sponsor_name = "Name unavailable"
+        
+        # Get current sponsor's name and code (if exists)
+        old_sponsor_code = current_result["sponsor_code"] if current_result and current_result["sponsor_code"] else None
+        old_sponsor_display = "NONE (Generic Bot)"
+        
+        if old_sponsor_code:
+            # Get old sponsor's telegram ID and name
+            cur.execute("SELECT owner_telegram_id FROM referrers WHERE ref_code = ?", (old_sponsor_code,))
+            old_sponsor_result = cur.fetchone()
+            
+            if old_sponsor_result:
+                try:
+                    old_sponsor_chat = await context.bot.get_chat(old_sponsor_result["owner_telegram_id"])
+                    old_sponsor_name = old_sponsor_chat.first_name or ""
+                    if old_sponsor_chat.last_name:
+                        old_sponsor_name += f" {old_sponsor_chat.last_name}"
+                    if not old_sponsor_name:
+                        old_sponsor_name = "No name"
+                    old_sponsor_display = f"{old_sponsor_code} ({old_sponsor_name})"
+                except Exception as e:
+                    logger.warning(f"Could not get old sponsor name: {e}")
+                    old_sponsor_display = f"{old_sponsor_code} (Name unavailable)"
+            else:
+                old_sponsor_display = f"{old_sponsor_code} (Not found)"
+        
         # Show confirmation message
         confirmation_msg = f"""🔄 MOVE USER CONFIRMATION
 
 User to Move:
 Code: {user_code}
-Telegram ID: {user_telegram_id}
+Telegram Name: {user_name}
 
-Current Sponsor: {old_sponsor}
-New Sponsor: {new_sponsor_code}
+Current Sponsor: {old_sponsor_display}
+New Sponsor: {new_sponsor_code} ({new_sponsor_name})
 
 Downline Impact:
 This user has {downline_count} members in their downline.
