@@ -1000,9 +1000,9 @@ def my_stats_hub_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
     """Main My Stats hub with 4 options."""
     return InlineKeyboardMarkup([
         [InlineKeyboardButton(ui_get(content, "btn_personal_stats", "📊 Personal Stats"), callback_data="mystats:personal")],
-        [InlineKeyboardButton(ui_get(content, "btn_team_stats", "👥 Team Stats"), callback_data="mystats:team_hub")],
-        [InlineKeyboardButton(ui_get(content, "btn_my_actions", "⚡ My Actions"), callback_data="mystats:actions")],
         [InlineKeyboardButton(ui_get(content, "btn_my_milestones", "🎖️ My Milestones"), callback_data="mystats:milestones")],
+        [InlineKeyboardButton(ui_get(content, "btn_my_actions", "⚡ My Actions"), callback_data="mystats:actions")],
+        [InlineKeyboardButton(ui_get(content, "btn_team_stats", "🛠 Team Tools"), callback_data="mystats:team_hub")],
         [InlineKeyboardButton(ui_get(content, "back_to_sharing_tools", "⬅️ Back to Sharing Tools"), callback_data="menu:affiliate_tools")],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
     ])
