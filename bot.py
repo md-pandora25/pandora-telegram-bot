@@ -1679,20 +1679,34 @@ Updated: Just now
 
 async def send_daily_report(context: ContextTypes.DEFAULT_TYPE) -> None:
     """Send daily report to admin users (scheduled task)."""
+    logger.info("=" * 50)
+    logger.info("DAILY REPORT: Starting execution")
+    logger.info("=" * 50)
+    
     db_init()
     
     # Get admin IDs
     admin_ids_str = os.getenv("ADMIN_USER_IDS", "")
+    logger.info(f"ADMIN_USER_IDS env var: {admin_ids_str}")
+    
     if not admin_ids_str:
+        logger.error("DAILY REPORT: No ADMIN_USER_IDS found in environment!")
         return
     
     try:
         admin_ids = [int(id.strip()) for id in admin_ids_str.split(",") if id.strip()]
-    except ValueError:
+        logger.info(f"DAILY REPORT: Parsed admin IDs: {admin_ids}")
+    except ValueError as e:
+        logger.error(f"DAILY REPORT: Failed to parse admin IDs: {e}")
         return
     
     # Get statistics
-    stats = get_admin_statistics()
+    try:
+        stats = get_admin_statistics()
+        logger.info(f"DAILY REPORT: Retrieved stats: {stats}")
+    except Exception as e:
+        logger.error(f"DAILY REPORT: Failed to get statistics: {e}", exc_info=True)
+        return
     
     # Build simplified daily report
     report = f"""📊 **Daily Pandora AI Bot Report**
@@ -1730,16 +1744,57 @@ New users will be tracked from now on.
 Use /adminstats for detailed analytics
 """
     
+    logger.info(f"DAILY REPORT: Report generated, length: {len(report)} chars")
+    
     # Send to all admin users
+    success_count = 0
     for admin_id in admin_ids:
         try:
+            logger.info(f"DAILY REPORT: Sending to admin {admin_id}...")
             await context.bot.send_message(
                 chat_id=admin_id,
                 text=report,
                 parse_mode='Markdown'
             )
+            success_count += 1
+            logger.info(f"DAILY REPORT: Successfully sent to admin {admin_id}")
         except Exception as e:
-            logger.error(f"Failed to send daily report to admin {admin_id}: {e}")
+            logger.error(f"DAILY REPORT: Failed to send to admin {admin_id}: {e}", exc_info=True)
+    
+    logger.info(f"DAILY REPORT: Completed. Sent to {success_count}/{len(admin_ids)} admins")
+    logger.info("=" * 50)
+
+
+async def test_report_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Manual trigger for daily report (admin only)."""
+    user_id = update.effective_user.id
+    
+    # Check if user is admin
+    admin_ids_str = os.getenv("ADMIN_USER_IDS", "")
+    if not admin_ids_str:
+        await update.message.reply_text("❌ No admin users configured.")
+        return
+    
+    try:
+        admin_ids = [int(id.strip()) for id in admin_ids_str.split(",") if id.strip()]
+    except ValueError:
+        await update.message.reply_text("❌ Invalid ADMIN_USER_IDS configuration.")
+        return
+    
+    if user_id not in admin_ids:
+        await update.message.reply_text("❌ This command is admin-only.")
+        return
+    
+    # Notify that we're generating the report
+    await update.message.reply_text("📊 Generating and sending daily report to all admins...")
+    
+    # Trigger the daily report
+    try:
+        await send_daily_report(context)
+        await update.message.reply_text("✅ Daily report sent! Check your messages.")
+    except Exception as e:
+        logger.error(f"Test report failed: {e}", exc_info=True)
+        await update.message.reply_text(f"❌ Error sending report:\n\n{str(e)}\n\nCheck Railway logs for details.")
 
 
 # -----------------------------
@@ -4492,6 +4547,7 @@ def main() -> None:
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("adminstats", adminstats_cmd))
+    app.add_handler(CommandHandler("testreport", test_report_cmd))
 
     app.add_handler(CommandHandler("reset", reset_cmd))
 
