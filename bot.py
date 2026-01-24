@@ -1812,11 +1812,10 @@ async def moveuser_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     # Parse arguments
     if not context.args or len(context.args) != 2:
         await update.message.reply_text(
-            "❌ **Invalid usage**\n\n"
-            "**Usage:** `/moveuser <user_code> <new_sponsor_code>`\n\n"
-            "**Example:** `/moveuser ABC123 XYZ789`\n\n"
-            "This moves user ABC123 (and their entire downline) under sponsor XYZ789.",
-            parse_mode='Markdown'
+            "❌ Invalid usage\n\n"
+            "Usage: /moveuser <user_code> <new_sponsor_code>\n\n"
+            "Example: /moveuser ABC123 XYZ789\n\n"
+            "This moves user ABC123 (and their entire downline) under sponsor XYZ789."
         )
         return
     
@@ -1893,11 +1892,10 @@ async def moveuser_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         sponsor_telegram_id = sponsor_result["owner_telegram_id"]
         if is_in_upline(user_code, sponsor_telegram_id):
             await update.message.reply_text(
-                f"❌ **Cannot move user!**\n\n"
+                f"❌ Cannot move user!\n\n"
                 f"The new sponsor ({new_sponsor_code}) is in the downline of user ({user_code}).\n\n"
                 f"This would create a circular reference.\n\n"
-                f"You cannot move a user under one of their own downline members.",
-                parse_mode='Markdown'
+                f"You cannot move a user under one of their own downline members."
             )
             conn.close()
             return
@@ -1939,35 +1937,36 @@ async def moveuser_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         downline_count = count_downline(user_code)
         
         # Show confirmation message
-        confirmation_msg = f"""🔄 **MOVE USER CONFIRMATION**
+        # Show confirmation message
+        confirmation_msg = f"""🔄 MOVE USER CONFIRMATION
 
-**User to Move:**
-Code: `{user_code}`
-Telegram ID: `{user_telegram_id}`
+User to Move:
+Code: {user_code}
+Telegram ID: {user_telegram_id}
 
-**Current Sponsor:** {old_sponsor}
-**New Sponsor:** `{new_sponsor_code}`
+Current Sponsor: {old_sponsor}
+New Sponsor: {new_sponsor_code}
 
-**Downline Impact:**
-This user has **{downline_count}** members in their downline.
+Downline Impact:
+This user has {downline_count} members in their downline.
 The entire downline will remain under this user.
 
-**What will change:**
+What will change:
 ✅ User's sponsor_code will update to: {new_sponsor_code}
 ✅ User and their {downline_count} downline members move together
 ✅ All relationships within the downline stay intact
 
-**What will NOT change:**
+What will NOT change:
 • User's referral code ({user_code}) stays the same
 • User's downline structure stays the same
 • User's team members stay under them
 
 ━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ **This action is PERMANENT!**
+⚠️ This action is PERMANENT!
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
 To proceed, type:
-`/moveuser {user_code} {new_sponsor_code} CONFIRM`
+/moveuser {user_code} {new_sponsor_code} CONFIRM
 """
         
         # Check if this is confirmation
@@ -1985,16 +1984,15 @@ To proceed, type:
             logger.info(f"ADMIN MOVE: Affected downline: {downline_count} members")
             
             await update.message.reply_text(
-                f"✅ **USER MOVED SUCCESSFULLY!**\n\n"
-                f"User `{user_code}` and their {downline_count} downline members have been moved under sponsor `{new_sponsor_code}`.\n\n"
-                f"**Previous Sponsor:** {old_sponsor}\n"
-                f"**New Sponsor:** `{new_sponsor_code}`\n\n"
-                f"The change is effective immediately.",
-                parse_mode='Markdown'
+                f"✅ USER MOVED SUCCESSFULLY!\n\n"
+                f"User {user_code} and their {downline_count} downline members have been moved under sponsor {new_sponsor_code}.\n\n"
+                f"Previous Sponsor: {old_sponsor}\n"
+                f"New Sponsor: {new_sponsor_code}\n\n"
+                f"The change is effective immediately."
             )
         else:
             # Show confirmation prompt
-            await update.message.reply_text(confirmation_msg, parse_mode='Markdown')
+            await update.message.reply_text(confirmation_msg)
         
         conn.close()
         
@@ -2109,7 +2107,7 @@ Your ID: `{user_id}`
 
 
 async def allmembers_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Show complete member database with all details (owner only)."""
+    """Generate complete member database as downloadable CSV file (owner only)."""
     user_id = update.effective_user.id
     
     # Check if user is owner
@@ -2141,18 +2139,17 @@ async def allmembers_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             return
         
         await update.message.reply_text(
-            f"📊 **Complete Member Database**\n\n"
+            f"📊 **Generating Member Database**\n\n"
             f"Total Members: **{len(all_members)}**\n\n"
-            f"Fetching Telegram info...\n"
+            f"Fetching member details...\n"
             f"This may take a moment ⏳"
         )
         
         # Get Telegram info for each member
-        from telegram import Bot
         bot = context.bot
         
         member_data = []
-        for i, member in enumerate(all_members[:200], 1):  # Limit to 200 for performance
+        for i, member in enumerate(all_members, 1):
             try:
                 telegram_user = await bot.get_chat(member["owner_telegram_id"])
                 
@@ -2160,8 +2157,6 @@ async def allmembers_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 full_name = telegram_user.first_name or ""
                 if telegram_user.last_name:
                     full_name += f" {telegram_user.last_name}"
-                
-                username = telegram_user.username
                 
                 # Count downline
                 conn = db_connect()
@@ -2197,31 +2192,49 @@ async def allmembers_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 
                 member_data.append({
                     "code": member["ref_code"],
-                    "telegram_id": member["owner_telegram_id"],
                     "name": full_name if full_name else "No name",
-                    "username": username,
                     "sponsor": member["sponsor_code"] if member["sponsor_code"] else "NONE",
                     "downline": downline
                 })
                 
-                # Progress update every 25 members
-                if i % 25 == 0:
-                    await update.message.reply_text(f"⏳ Processed {i}/{len(all_members[:200])} members...")
+                # Progress update every 50 members
+                if i % 50 == 0:
+                    await update.message.reply_text(f"⏳ Processed {i}/{len(all_members)} members...")
                 
             except Exception as e:
                 logger.warning(f"Could not get info for member {member['ref_code']}: {e}")
                 member_data.append({
                     "code": member["ref_code"],
-                    "telegram_id": member["owner_telegram_id"],
                     "name": "Name unavailable",
-                    "username": None,
                     "sponsor": member["sponsor_code"] if member["sponsor_code"] else "NONE",
                     "downline": 0
                 })
         
-        # Build report in chunks (Telegram has 4096 char limit)
-        chunks = []
-        current_chunk = f"""📊 **ALL MEMBERS DATABASE**
+        # Generate CSV file
+        import csv
+        import tempfile
+        
+        # Create temporary CSV file
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f"all_members_{timestamp}.csv"
+        
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.csv', newline='', encoding='utf-8') as csvfile:
+            fieldnames = ['Unique Bot ID', 'Name', 'Sponsor', 'Downline']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            
+            writer.writeheader()
+            for member in member_data:
+                writer.writerow({
+                    'Unique Bot ID': member['code'],
+                    'Name': member['name'],
+                    'Sponsor': member['sponsor'],
+                    'Downline': member['downline']
+                })
+            
+            temp_path = csvfile.name
+        
+        # Also send text summary
+        summary = f"""📊 **ALL MEMBERS DATABASE**
 Generated: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}
 Total Members: **{len(member_data)}**
 
@@ -2229,37 +2242,39 @@ Total Members: **{len(member_data)}**
 
 """
         
-        for member in member_data:
-            member_info = f"""**{member['code']}**
+        # Add first 20 members to preview
+        for member in member_data[:20]:
+            summary += f"""**{member['code']}**
 Name: {member['name']}
-Telegram: @{member['username'] if member['username'] else 'None'}
-ID: `{member['telegram_id']}`
 Sponsor: {member['sponsor']}
 Downline: {member['downline']} members
 
 """
-            
-            # Check if adding this would exceed limit
-            if len(current_chunk) + len(member_info) > 3800:
-                chunks.append(current_chunk)
-                current_chunk = member_info
-            else:
-                current_chunk += member_info
         
-        # Add final chunk
-        if current_chunk:
-            chunks.append(current_chunk)
+        if len(member_data) > 20:
+            summary += f"\n... and {len(member_data) - 20} more members\n"
         
-        # Send all chunks
-        for i, chunk in enumerate(chunks, 1):
-            if i == len(chunks):
-                chunk += f"\n━━━━━━━━━━━━━━━━━━━━━━\n"
-                chunk += f"End of report ({i}/{len(chunks)})"
-            else:
-                chunk += f"\n━━━━━━━━━━━━━━━━━━━━━━\n"
-                chunk += f"Continued... ({i}/{len(chunks)})"
-            
-            await update.message.reply_text(chunk, parse_mode='Markdown')
+        summary += f"""
+━━━━━━━━━━━━━━━━━━━━━━
+
+📥 **Downloading complete CSV file below...**
+"""
+        
+        await update.message.reply_text(summary, parse_mode='Markdown')
+        
+        # Send CSV file
+        with open(temp_path, 'rb') as csvfile:
+            await update.message.reply_document(
+                document=csvfile,
+                filename=filename,
+                caption=f"📊 Complete member database\n{len(member_data)} members\nGenerated: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}"
+            )
+        
+        # Clean up temp file
+        import os
+        os.unlink(temp_path)
+        
+        logger.info(f"OWNER {user_id} downloaded all members database ({len(member_data)} members)")
         
     except Exception as e:
         logger.error(f"Error in allmembers_cmd: {e}", exc_info=True)
