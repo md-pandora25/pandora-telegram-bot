@@ -1810,7 +1810,7 @@ async def moveuser_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         return
     
     # Parse arguments
-    if not context.args or len(context.args) != 2:
+    if not context.args or len(context.args) < 2 or len(context.args) > 3:
         await update.message.reply_text(
             "❌ Invalid usage\n\n"
             "Usage: /moveuser <user_code> <new_sponsor_code>\n\n"
