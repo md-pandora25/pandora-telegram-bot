@@ -723,15 +723,30 @@ def get_admin_statistics() -> Dict[str, Any]:
     links_24h = 0
     users_7d = 0
     links_7d = 0
+    generic_24h = 0
+    referred_24h = 0
     
     if has_created_at:
         try:
+            # New users in last 24 hours
             cur.execute("""
                 SELECT COUNT(*) as count FROM users 
                 WHERE created_at IS NOT NULL 
                 AND datetime(created_at) > datetime('now', '-1 day')
             """)
             users_24h = cur.fetchone()["count"]
+            
+            # Generic visitors in last 24 hours
+            cur.execute("""
+                SELECT COUNT(*) as count FROM users 
+                WHERE created_at IS NOT NULL 
+                AND datetime(created_at) > datetime('now', '-1 day')
+                AND (sponsor_code IS NULL OR sponsor_code = '')
+            """)
+            generic_24h = cur.fetchone()["count"]
+            
+            # Referred users in last 24 hours
+            referred_24h = users_24h - generic_24h
             
             # New links in last 24 hours
             cur.execute("""
@@ -770,6 +785,8 @@ def get_admin_statistics() -> Dict[str, Any]:
         "step1_confirmed": step1_confirmed,
         "step2_ack": step2_ack,
         "users_24h": users_24h,
+        "generic_24h": generic_24h,
+        "referred_24h": referred_24h,
         "links_24h": links_24h,
         "users_7d": users_7d,
         "links_7d": links_7d,
@@ -1708,39 +1725,54 @@ async def send_daily_report(context: ContextTypes.DEFAULT_TYPE) -> None:
         logger.error(f"DAILY REPORT: Failed to get statistics: {e}", exc_info=True)
         return
     
-    # Build simplified daily report
+    # Build daily report with Yesterday's Activity first
     report = f"""📊 **Daily Pandora AI Bot Report**
 {datetime.now().strftime('%A, %B %d, %Y')}
 
-{'═'*35}
-📊 **CURRENT TOTALS**
-{'═'*35}
-Total Users: **{stats['total_users']:,}**
-Users with Links: **{stats['users_with_links']:,}**
-Generic Visitors: {stats['generic_visitors']:,}
-
-{'═'*35}
-📈 **YESTERDAY'S ACTIVITY**
-{'═'*35}
 """
     
+    # Yesterday's Activity FIRST (at top)
     if stats.get('has_time_tracking', False):
-        report += f"""New Users: **{stats['users_24h']}**
-New Link Setups: **{stats['links_24h']}**
-
+        report += f"""{'═'*35}
+📈 **YESTERDAY'S ACTIVITY**
 {'═'*35}
+Total Unique Visitors: **{stats['users_24h']}**
+Generic Bot Visitors: {stats['generic_24h']}
+Via Referral Link: {stats['referred_24h']}
+Users Who Set Links: **{stats['links_24h']}**
+
+"""
+    else:
+        report += f"""{'═'*35}
+📈 **YESTERDAY'S ACTIVITY**
+{'═'*35}
+Time tracking not yet available.
+New users will be tracked from now on.
+
+"""
+    
+    # Current Totals SECOND
+    report += f"""{'═'*35}
+📊 **CURRENT TOTALS**
+{'═'*35}
+Total Unique Visitors: **{stats['total_users']:,}**
+Generic Bot Visitors: {stats['generic_visitors']:,}
+Via Referral Link: {stats['referred_users']:,}
+Users Who Set Links: **{stats['users_with_links']:,}**
+
+"""
+    
+    # Weekly Progress THIRD (if time tracking available)
+    if stats.get('has_time_tracking', False):
+        report += f"""{'═'*35}
 📅 **WEEKLY PROGRESS**
 {'═'*35}
 New Users (7 days): **{stats['users_7d']}**
 New Links (7 days): **{stats['links_7d']}**
-"""
-    else:
-        report += """Time tracking not yet available.
-New users will be tracked from now on.
+
 """
     
-    report += f"""
-{'─'*35}
+    report += f"""{'─'*35}
 Use /adminstats for detailed analytics
 """
     
