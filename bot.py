@@ -1506,57 +1506,24 @@ async def help_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def adminstats_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Admin-only command to view bot statistics."""
+    """Owner-only command to view bot statistics."""
     db_init()
     
-    # Check if user is admin
+    # Check if user is owner
     user_id = update.effective_user.id
-    admin_ids_str = os.getenv("ADMIN_USER_IDS", "")
     
-    # Debug: Show what we're checking
-    debug_msg = f"🔍 Debug Info:\n"
-    debug_msg += f"Your User ID: {user_id}\n"
-    debug_msg += f"ADMIN_USER_IDS env var: '{admin_ids_str}'\n"
-    
-    if not admin_ids_str:
-        # No admins configured
-        await update.message.reply_text(
-            "❌ ADMIN_USER_IDS environment variable is not set in Railway.\n\n"
-            f"Your Telegram User ID is: {user_id}\n\n"
-            "Please add this to Railway:\n"
-            "Variable: ADMIN_USER_IDS\n"
-            f"Value: {user_id}"
-        )
-        return
-    
-    try:
-        admin_ids = [int(id.strip()) for id in admin_ids_str.split(",") if id.strip()]
-        debug_msg += f"Parsed Admin IDs: {admin_ids}\n"
-    except ValueError as e:
-        # Invalid admin IDs configured
-        await update.message.reply_text(
-            f"❌ Error parsing ADMIN_USER_IDS: {e}\n\n"
-            f"Current value: '{admin_ids_str}'\n"
-            f"Your User ID: {user_id}\n\n"
-            "Expected format: 123456789,987654321"
-        )
-        return
-    
-    debug_msg += f"Is {user_id} in {admin_ids}? {user_id in admin_ids}\n"
-    
-    if user_id not in admin_ids:
-        # Not an admin - show debug info
+    if not is_owner(user_id):
         await update.message.reply_text(
             f"❌ Access Denied\n\n"
-            f"{debug_msg}\n"
-            f"You are not in the admin list.\n\n"
-            "To add yourself:\n"
-            "1. Go to Railway\n"
-            "2. Update ADMIN_USER_IDS to include: {user_id}"
+            f"This command is owner-only.\n\n"
+            f"Your Telegram User ID: {user_id}\n\n"
+            "To add yourself as owner:\n"
+            "1. Go to Railway environment variables\n"
+            "2. Add/Update OWNER_USER_IDS to include: {user_id}"
         )
         return
     
-    # User is admin - generate statistics
+    # User is owner - generate statistics
     try:
         stats = get_admin_statistics()
         performers = get_top_performers(limit=10)
@@ -1827,6 +1794,479 @@ async def test_report_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     except Exception as e:
         logger.error(f"Test report failed: {e}", exc_info=True)
         await update.message.reply_text(f"❌ Error sending report:\n\n{str(e)}\n\nCheck Railway logs for details.")
+
+
+async def moveuser_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Move a user and their entire downline to a new sponsor (owner only).
+    
+    Usage: /moveuser <user_code> <new_sponsor_code>
+    Example: /moveuser ABC123 XYZ789
+    """
+    user_id = update.effective_user.id
+    
+    # Check if user is owner
+    if not is_owner(user_id):
+        await update.message.reply_text("❌ This command is owner-only.")
+        return
+    
+    # Parse arguments
+    if not context.args or len(context.args) != 2:
+        await update.message.reply_text(
+            "❌ **Invalid usage**\n\n"
+            "**Usage:** `/moveuser <user_code> <new_sponsor_code>`\n\n"
+            "**Example:** `/moveuser ABC123 XYZ789`\n\n"
+            "This moves user ABC123 (and their entire downline) under sponsor XYZ789.",
+            parse_mode='Markdown'
+        )
+        return
+    
+    user_code = context.args[0].upper().strip()
+    new_sponsor_code = context.args[1].upper().strip()
+    
+    # Validate codes
+    if len(user_code) != 6 or not user_code.isalnum():
+        await update.message.reply_text(f"❌ Invalid user code: {user_code}\n\nCodes must be 6 alphanumeric characters.")
+        return
+    
+    if len(new_sponsor_code) != 6 or not new_sponsor_code.isalnum():
+        await update.message.reply_text(f"❌ Invalid sponsor code: {new_sponsor_code}\n\nCodes must be 6 alphanumeric characters.")
+        return
+    
+    if user_code == new_sponsor_code:
+        await update.message.reply_text("❌ User code and sponsor code cannot be the same!")
+        return
+    
+    try:
+        db_init()
+        conn = db_connect()
+        cur = conn.cursor()
+        
+        # Check if user exists
+        cur.execute("SELECT owner_telegram_id FROM referrers WHERE ref_code = ?", (user_code,))
+        user_result = cur.fetchone()
+        
+        if not user_result:
+            await update.message.reply_text(f"❌ User code not found: {user_code}\n\nThis user has not set their referral links yet.")
+            conn.close()
+            return
+        
+        user_telegram_id = user_result["owner_telegram_id"]
+        
+        # Check if new sponsor exists
+        cur.execute("SELECT owner_telegram_id FROM referrers WHERE ref_code = ?", (new_sponsor_code,))
+        sponsor_result = cur.fetchone()
+        
+        if not sponsor_result:
+            await update.message.reply_text(f"❌ Sponsor code not found: {new_sponsor_code}\n\nThis sponsor has not set their referral links yet.")
+            conn.close()
+            return
+        
+        # Check for circular reference (user cannot be in their own upline)
+        def is_in_upline(check_code: str, target_id: int, depth: int = 0, max_depth: int = 20) -> bool:
+            """Check if target_id is in the upline of check_code."""
+            if depth > max_depth:
+                return False
+            
+            # Get the owner of check_code
+            cur.execute("SELECT owner_telegram_id FROM referrers WHERE ref_code = ?", (check_code,))
+            result = cur.fetchone()
+            if not result:
+                return False
+            
+            check_id = result["owner_telegram_id"]
+            
+            # Is this the target?
+            if check_id == target_id:
+                return True
+            
+            # Get their sponsor
+            cur.execute("SELECT sponsor_code FROM users WHERE telegram_user_id = ?", (check_id,))
+            sponsor_result = cur.fetchone()
+            
+            if not sponsor_result or not sponsor_result["sponsor_code"]:
+                return False
+            
+            # Recursively check upline
+            return is_in_upline(sponsor_result["sponsor_code"], target_id, depth + 1, max_depth)
+        
+        # Check if new sponsor is in user's downline (would create circular reference)
+        sponsor_telegram_id = sponsor_result["owner_telegram_id"]
+        if is_in_upline(user_code, sponsor_telegram_id):
+            await update.message.reply_text(
+                f"❌ **Cannot move user!**\n\n"
+                f"The new sponsor ({new_sponsor_code}) is in the downline of user ({user_code}).\n\n"
+                f"This would create a circular reference.\n\n"
+                f"You cannot move a user under one of their own downline members.",
+                parse_mode='Markdown'
+            )
+            conn.close()
+            return
+        
+        # Get current sponsor
+        cur.execute("SELECT sponsor_code FROM users WHERE telegram_user_id = ?", (user_telegram_id,))
+        current_result = cur.fetchone()
+        
+        old_sponsor = current_result["sponsor_code"] if current_result and current_result["sponsor_code"] else "NONE (Generic Bot)"
+        
+        # Count downline members
+        def count_downline(sponsor_code: str, depth: int = 0, max_depth: int = 20, seen: set = None) -> int:
+            """Recursively count all downline members."""
+            if seen is None:
+                seen = set()
+            
+            if depth > max_depth or sponsor_code in seen:
+                return 0
+            
+            seen.add(sponsor_code)
+            
+            # Get direct referrals
+            cur.execute("""
+                SELECT r.ref_code
+                FROM users u
+                JOIN referrers r ON u.telegram_user_id = r.owner_telegram_id
+                WHERE u.sponsor_code = ?
+            """, (sponsor_code,))
+            
+            direct_refs = cur.fetchall()
+            count = len(direct_refs)
+            
+            # Recursively count their downlines
+            for ref in direct_refs:
+                count += count_downline(ref["ref_code"], depth + 1, max_depth, seen)
+            
+            return count
+        
+        downline_count = count_downline(user_code)
+        
+        # Show confirmation message
+        confirmation_msg = f"""🔄 **MOVE USER CONFIRMATION**
+
+**User to Move:**
+Code: `{user_code}`
+Telegram ID: `{user_telegram_id}`
+
+**Current Sponsor:** {old_sponsor}
+**New Sponsor:** `{new_sponsor_code}`
+
+**Downline Impact:**
+This user has **{downline_count}** members in their downline.
+The entire downline will remain under this user.
+
+**What will change:**
+✅ User's sponsor_code will update to: {new_sponsor_code}
+✅ User and their {downline_count} downline members move together
+✅ All relationships within the downline stay intact
+
+**What will NOT change:**
+• User's referral code ({user_code}) stays the same
+• User's downline structure stays the same
+• User's team members stay under them
+
+━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ **This action is PERMANENT!**
+━━━━━━━━━━━━━━━━━━━━━━━━
+
+To proceed, type:
+`/moveuser {user_code} {new_sponsor_code} CONFIRM`
+"""
+        
+        # Check if this is confirmation
+        if len(context.args) == 3 and context.args[2].upper() == "CONFIRM":
+            # Execute the move
+            cur.execute("""
+                UPDATE users 
+                SET sponsor_code = ?, updated_at = CURRENT_TIMESTAMP
+                WHERE telegram_user_id = ?
+            """, (new_sponsor_code, user_telegram_id))
+            
+            conn.commit()
+            
+            logger.info(f"ADMIN MOVE: User {user_code} (ID: {user_telegram_id}) moved from {old_sponsor} to {new_sponsor_code} by admin {user_id}")
+            logger.info(f"ADMIN MOVE: Affected downline: {downline_count} members")
+            
+            await update.message.reply_text(
+                f"✅ **USER MOVED SUCCESSFULLY!**\n\n"
+                f"User `{user_code}` and their {downline_count} downline members have been moved under sponsor `{new_sponsor_code}`.\n\n"
+                f"**Previous Sponsor:** {old_sponsor}\n"
+                f"**New Sponsor:** `{new_sponsor_code}`\n\n"
+                f"The change is effective immediately.",
+                parse_mode='Markdown'
+            )
+        else:
+            # Show confirmation prompt
+            await update.message.reply_text(confirmation_msg, parse_mode='Markdown')
+        
+        conn.close()
+        
+    except Exception as e:
+        logger.error(f"Error in moveuser_cmd: {e}", exc_info=True)
+        await update.message.reply_text(
+            f"❌ **Error moving user:**\n\n{str(e)}\n\nCheck Railway logs for details.",
+            parse_mode='Markdown'
+        )
+
+
+async def commands_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show available commands based on user role."""
+    user_id = update.effective_user.id
+    role = get_user_role(user_id)
+    
+    # Build command list based on role
+    if role == 'owner':
+        message = """🔐 **OWNER COMMANDS**
+
+**System Management:**
+/moveuser - Move user and downline to new sponsor
+/adminstats - View detailed bot statistics
+/allmembers - View complete member database
+/testreport - Trigger daily report manually
+
+**Reports:**
+📊 Daily reports automatically sent each morning
+
+**Member Management:**
+📋 Team Stats → Member List - View all team members
+🔍 Team Stats → Analyze Member - Analyze any member
+
+**General:**
+/commands - Show this list
+/start - Start/restart bot
+/help - Show help menu
+/reset - Reset your data
+
+━━━━━━━━━━━━━━━━━━━━━━
+Your Role: **OWNER** (Full Access)
+Your ID: `{user_id}`
+"""
+    
+    elif role == 'admin':
+        message = """👤 **ADMIN COMMANDS**
+
+**Reports:**
+📊 Daily reports automatically sent each morning
+/testreport - Trigger daily report manually
+
+**Member Management:**
+📋 Team Stats → Member List - View all team members
+🔍 Team Stats → Analyze Member - Analyze any member
+
+**General:**
+/commands - Show this list
+/start - Start/restart bot
+/help - Show help menu
+/reset - Reset your data
+
+━━━━━━━━━━━━━━━━━━━━━━
+Your Role: **ADMIN** (Report Access + Member Analysis)
+Your ID: `{user_id}`
+
+Note: Some owner-only commands not available:
+• /moveuser (owner only)
+• /adminstats (owner only)
+• /allmembers (owner only)
+"""
+    
+    else:
+        message = """👥 **USER COMMANDS**
+
+**Getting Started:**
+/start - Start/restart bot
+/help - Show help menu
+
+**My Stats:**
+📊 My Stats - View your statistics
+  • Personal Stats
+  • Team Stats (your downline only)
+  • Activity Feed
+  • Member List (your team)
+  • Analyze Member (your downline only)
+
+**Sharing:**
+💬 Sharing Tools - Templates and tools
+  • 18 pre-made templates
+  • Quick link copy
+  • Share achievement
+
+**Information:**
+📚 FAQ - Frequently asked questions
+  • How To Guides
+  • Common Questions
+  • Platform Info
+
+**Other:**
+/commands - Show this list
+/reset - Reset your data
+
+━━━━━━━━━━━━━━━━━━━━━━
+Your Role: **USER** (Standard Access)
+Your ID: `{user_id}`
+"""
+    
+    await update.message.reply_text(
+        message.replace("{user_id}", str(user_id)),
+        parse_mode='Markdown'
+    )
+
+
+async def allmembers_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Show complete member database with all details (owner only)."""
+    user_id = update.effective_user.id
+    
+    # Check if user is owner
+    if not is_owner(user_id):
+        await update.message.reply_text("❌ This command is owner-only.")
+        return
+    
+    try:
+        db_init()
+        conn = db_connect()
+        cur = conn.cursor()
+        
+        # Get all members with their codes
+        cur.execute("""
+            SELECT 
+                r.ref_code,
+                r.owner_telegram_id,
+                u.sponsor_code
+            FROM referrers r
+            LEFT JOIN users u ON r.owner_telegram_id = u.telegram_user_id
+            ORDER BY r.created_at ASC
+        """)
+        
+        all_members = cur.fetchall()
+        conn.close()
+        
+        if not all_members:
+            await update.message.reply_text("📋 No members found in database.")
+            return
+        
+        await update.message.reply_text(
+            f"📊 **Complete Member Database**\n\n"
+            f"Total Members: **{len(all_members)}**\n\n"
+            f"Fetching Telegram info...\n"
+            f"This may take a moment ⏳"
+        )
+        
+        # Get Telegram info for each member
+        from telegram import Bot
+        bot = context.bot
+        
+        member_data = []
+        for i, member in enumerate(all_members[:200], 1):  # Limit to 200 for performance
+            try:
+                telegram_user = await bot.get_chat(member["owner_telegram_id"])
+                
+                # Build name
+                full_name = telegram_user.first_name or ""
+                if telegram_user.last_name:
+                    full_name += f" {telegram_user.last_name}"
+                
+                username = telegram_user.username
+                
+                # Count downline
+                conn = db_connect()
+                cur = conn.cursor()
+                
+                def count_downline(sponsor_code: str, depth: int = 0, max_depth: int = 20, seen: set = None) -> int:
+                    """Recursively count downline."""
+                    if seen is None:
+                        seen = set()
+                    
+                    if depth > max_depth or sponsor_code in seen:
+                        return 0
+                    
+                    seen.add(sponsor_code)
+                    
+                    cur.execute("""
+                        SELECT r.ref_code
+                        FROM users u
+                        JOIN referrers r ON u.telegram_user_id = r.owner_telegram_id
+                        WHERE u.sponsor_code = ?
+                    """, (sponsor_code,))
+                    
+                    direct_refs = cur.fetchall()
+                    count = len(direct_refs)
+                    
+                    for ref in direct_refs:
+                        count += count_downline(ref["ref_code"], depth + 1, max_depth, seen)
+                    
+                    return count
+                
+                downline = count_downline(member["ref_code"])
+                conn.close()
+                
+                member_data.append({
+                    "code": member["ref_code"],
+                    "telegram_id": member["owner_telegram_id"],
+                    "name": full_name if full_name else "No name",
+                    "username": username,
+                    "sponsor": member["sponsor_code"] if member["sponsor_code"] else "NONE",
+                    "downline": downline
+                })
+                
+                # Progress update every 25 members
+                if i % 25 == 0:
+                    await update.message.reply_text(f"⏳ Processed {i}/{len(all_members[:200])} members...")
+                
+            except Exception as e:
+                logger.warning(f"Could not get info for member {member['ref_code']}: {e}")
+                member_data.append({
+                    "code": member["ref_code"],
+                    "telegram_id": member["owner_telegram_id"],
+                    "name": "Name unavailable",
+                    "username": None,
+                    "sponsor": member["sponsor_code"] if member["sponsor_code"] else "NONE",
+                    "downline": 0
+                })
+        
+        # Build report in chunks (Telegram has 4096 char limit)
+        chunks = []
+        current_chunk = f"""📊 **ALL MEMBERS DATABASE**
+Generated: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}
+Total Members: **{len(member_data)}**
+
+━━━━━━━━━━━━━━━━━━━━━━
+
+"""
+        
+        for member in member_data:
+            member_info = f"""**{member['code']}**
+Name: {member['name']}
+Telegram: @{member['username'] if member['username'] else 'None'}
+ID: `{member['telegram_id']}`
+Sponsor: {member['sponsor']}
+Downline: {member['downline']} members
+
+"""
+            
+            # Check if adding this would exceed limit
+            if len(current_chunk) + len(member_info) > 3800:
+                chunks.append(current_chunk)
+                current_chunk = member_info
+            else:
+                current_chunk += member_info
+        
+        # Add final chunk
+        if current_chunk:
+            chunks.append(current_chunk)
+        
+        # Send all chunks
+        for i, chunk in enumerate(chunks, 1):
+            if i == len(chunks):
+                chunk += f"\n━━━━━━━━━━━━━━━━━━━━━━\n"
+                chunk += f"End of report ({i}/{len(chunks)})"
+            else:
+                chunk += f"\n━━━━━━━━━━━━━━━━━━━━━━\n"
+                chunk += f"Continued... ({i}/{len(chunks)})"
+            
+            await update.message.reply_text(chunk, parse_mode='Markdown')
+        
+    except Exception as e:
+        logger.error(f"Error in allmembers_cmd: {e}", exc_info=True)
+        await update.message.reply_text(
+            f"❌ **Error generating member list:**\n\n{str(e)}\n\nCheck Railway logs for details.",
+            parse_mode='Markdown'
+        )
 
 
 # -----------------------------
@@ -3397,7 +3837,7 @@ def get_member_code(telegram_id: int) -> str:
 
 
 def is_admin(user_id: int) -> bool:
-    """Check if user is an admin."""
+    """Check if user is an admin (receives reports, can analyze members)."""
     # Try both possible env var names for compatibility
     admin_ids_str = os.getenv("ADMIN_USER_IDS", "") or os.getenv("ADMIN_IDS", "")
     if not admin_ids_str:
@@ -3407,14 +3847,42 @@ def is_admin(user_id: int) -> bool:
     return user_id in admin_ids
 
 
+def is_owner(user_id: int) -> bool:
+    """Check if user is an owner (full system access including moveuser, adminstats, allmembers)."""
+    owner_ids_str = os.getenv("OWNER_USER_IDS", "")
+    if not owner_ids_str:
+        return False
+    
+    try:
+        owner_ids = [int(x.strip()) for x in owner_ids_str.split(",") if x.strip().isdigit()]
+        return user_id in owner_ids
+    except (ValueError, AttributeError):
+        return False
+
+
+def get_user_role(user_id: int) -> str:
+    """Get user's role: 'owner', 'admin', or 'user'."""
+    if is_owner(user_id):
+        return 'owner'
+    elif is_admin(user_id):
+        return 'admin'
+    else:
+        return 'user'
+
+
 def can_analyze_member(analyzer_id: int, target_code: str) -> bool:
     """Check if analyzer has permission to view target member's stats.
     
     Rules:
+    - Owners can see everyone
     - Admins can see everyone
     - Users can ONLY see their downline (NOT upline/sponsor)
     - Cannot see other teams
     """
+    # Owner override (highest permission)
+    if is_owner(analyzer_id):
+        return True
+    
     # Admin override
     if is_admin(analyzer_id):
         return True
@@ -4580,6 +5048,9 @@ def main() -> None:
     app.add_handler(CommandHandler("help", help_cmd))
     app.add_handler(CommandHandler("adminstats", adminstats_cmd))
     app.add_handler(CommandHandler("testreport", test_report_cmd))
+    app.add_handler(CommandHandler("moveuser", moveuser_cmd))
+    app.add_handler(CommandHandler("commands", commands_cmd))
+    app.add_handler(CommandHandler("allmembers", allmembers_cmd))
 
     app.add_handler(CommandHandler("reset", reset_cmd))
 
