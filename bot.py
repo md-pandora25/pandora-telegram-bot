@@ -1213,9 +1213,10 @@ def affiliate_tools_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(ui_get(content, "share_invite_btn", "📤 Share My Invite Link"), callback_data="affiliate:share_invite")],
         [InlineKeyboardButton(ui_get(content, "menu_set_links", "🔗 Set Referral Links"), callback_data="affiliate:set_links")],
         [InlineKeyboardButton(ui_get(content, "check_ref_links_btn", "🔍 Check My Referral Links"), callback_data="affiliate:check_links")],
-        [InlineKeyboardButton(ui_get(content, "my_team_stats_btn", "📊 My Stats"), callback_data="mystats:hub")],
+        [InlineKeyboardButton(ui_get(content, "my_team_stats_btn", "👥 Member Tools"), callback_data="mystats:hub")],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
     ])
+
 
 
 def about_kb(content: Dict[str, Any], url: str) -> InlineKeyboardMarkup:
@@ -3154,12 +3155,28 @@ async def on_mystats_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     # Check if user has referral links set
     ref = get_referrer_by_owner(user_id)
     if not ref:
-        await safe_show_menu_message(
-            query, 
-            context, 
-            ui_get(content, "ref_not_set", "Set your links first."), 
-            sharing_tools_submenu_kb(content)
+        # Show unlock message with buttons to set referral links OR join Pandora AI
+        unlock_title = ui_get(content, "member_tools_locked_title", "🔒 Member Tools - Unlock Required")
+        unlock_message = ui_get(
+            content, 
+            "member_tools_locked_message", 
+            "To access Member Tools, you need to set your referral links first.\n\nClick below to set them now:"
         )
+        unlock_kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton(
+                ui_get(content, "btn_unlock_member_tools", "🔓 Set Referral Links to Unlock"), 
+                callback_data="affiliate:set_links"
+            )],
+            [InlineKeyboardButton(
+                ui_get(content, "btn_join_to_unlock", "🚀 Join Pandora AI Now"), 
+                callback_data="menu:join"
+            )],
+            [InlineKeyboardButton(ui_get(content, "back_to_sharing_tools", "⬅️ Back to Sharing Tools"), callback_data="menu:affiliate_tools")],
+            [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+        ])
+        
+        full_message = f"{unlock_title}\n\n{unlock_message}"
+        await safe_show_menu_message(query, context, full_message, unlock_kb)
         return
     
     # Route to appropriate handler
