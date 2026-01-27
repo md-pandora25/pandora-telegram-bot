@@ -3732,11 +3732,27 @@ async def show_progress_tracker(query, context, content, user_id: int):
     
     full_message = f"{title}\n\n{progress_text}\n{progress_bar}\n\n{separator}\n\n" + "\n".join(steps_text) + f"\n{separator}\n\n{next_action_text}"
     
-    # Build keyboard
-    kb = InlineKeyboardMarkup([
-        [InlineKeyboardButton(ui_get(content, "back_to_sharing_tools", "⬅️ Back to Sharing Tools"), callback_data="menu:affiliate_tools")],
-        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
-    ])
+    # Build keyboard - add Set Links button if user hasn't set links yet
+    buttons = []
+    
+    if not has_links:
+        # User needs to set links - add the button
+        buttons.append([InlineKeyboardButton(
+            ui_get(content, "menu_set_links", "🔗 Set Referral Links"), 
+            callback_data="affiliate:set_links"
+        )])
+    
+    # Always show back buttons
+    buttons.append([InlineKeyboardButton(
+        ui_get(content, "back_to_sharing_tools", "⬅️ Back to Sharing Tools"), 
+        callback_data="menu:affiliate_tools"
+    )])
+    buttons.append([InlineKeyboardButton(
+        ui_get(content, "back_to_menu", "⬅️ Back to menu"), 
+        callback_data="menu:home"
+    )])
+    
+    kb = InlineKeyboardMarkup(buttons)
     
     await safe_show_menu_message(query, context, full_message, kb)
 
