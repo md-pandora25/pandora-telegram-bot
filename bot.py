@@ -222,6 +222,12 @@ async def check_and_show_update_notification(
     """
     Check if user needs to see update notification.
     Returns True if notification was shown, False otherwise.
+    
+    DISABLED: This feature is disabled. Will be re-implemented with proper version control later.
+    """
+    return False
+    
+    # DISABLED CODE BELOW - keeping for future reference
     """
     user_id = update.effective_user.id if update.effective_user else None
     if not user_id:
@@ -256,6 +262,7 @@ async def check_and_show_update_notification(
             return False
     
     return False
+    """
 
 
 def upsert_user(telegram_user_id: int, sponsor_code: Optional[str] = None) -> None:
@@ -2067,6 +2074,7 @@ async def commands_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 /adminstats - View detailed bot statistics
 /allmembers - View complete member database
 /testreport - Trigger daily report manually
+/resetuser - Reset user account for testing
 
 **Reports:**
 📊 Daily reports automatically sent each morning
@@ -2111,6 +2119,7 @@ Note: Some owner-only commands not available:
 • /moveuser (owner only)
 • /adminstats (owner only)
 • /allmembers (owner only)
+• /resetuser (owner only)
 """
     
     else:
