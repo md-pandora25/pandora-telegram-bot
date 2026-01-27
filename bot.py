@@ -1013,6 +1013,10 @@ def calculate_progress_percentage(progress: Dict[str, Any], user_id: int) -> int
     shared_invite = progress["shared_invite"]
     visited_member_tools = progress["visited_member_tools"]
     
+    # Check if user has referral links (for existing users)
+    ref = get_referrer_by_owner(user_id)
+    has_links = ref is not None
+    
     # Check if user has first team member (Step 7)
     has_team_member = has_team_member_with_links(user_id)
     
@@ -1020,12 +1024,12 @@ def calculate_progress_percentage(progress: Dict[str, Any], user_id: int) -> int
     completed = 0
     total = 7
     
-    # Step 1-2: Auto-complete if user has set links (step >= 3)
-    if step >= 3:
+    # Step 1-2: Auto-complete if user has set links (even if progress_step not updated)
+    if has_links:
         completed += 2  # Steps 1 and 2
     
     # Step 3: Set bot links
-    if step >= 3:
+    if has_links:
         completed += 1
     
     # Step 4: Visited Sharing Tools
@@ -2780,7 +2784,11 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         user_id = query.from_user.id
         progress = get_user_progress(user_id)
         
-        if not progress["visited_sharing"] and progress["progress_step"] >= 3:
+        # Check if user has links (for existing users)
+        ref = get_referrer_by_owner(user_id)
+        has_links = ref is not None
+        
+        if not progress["visited_sharing"] and has_links:
             mark_progress_action(user_id, "visited_sharing")
             # Trigger celebration
             asyncio.create_task(show_progress_celebration(context, user_id, 4, content))
@@ -3510,7 +3518,11 @@ async def on_mystats_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     
     # Track visit to Member Tools (Step 6)
     progress = get_user_progress(user_id)
-    if not progress["visited_member_tools"] and progress["progress_step"] >= 3:
+    # Check if user has links (for existing users)
+    ref = get_referrer_by_owner(user_id)
+    has_links = ref is not None
+    
+    if not progress["visited_member_tools"] and has_links:
         mark_progress_action(user_id, "visited_member_tools")
         # Trigger celebration
         asyncio.create_task(show_progress_celebration(context, user_id, 6, content))
@@ -3567,8 +3579,11 @@ async def show_progress_tracker(query, context, content, user_id: int):
     progress = get_user_progress(user_id)
     percentage = calculate_progress_percentage(progress, user_id)
     
+    # Check if user has links (for existing users)
+    ref = get_referrer_by_owner(user_id)
+    has_links = ref is not None
+    
     # Check individual step status
-    step = progress["progress_step"]
     visited_sharing = progress["visited_sharing"]
     shared_invite = progress["shared_invite"]
     visited_member_tools = progress["visited_member_tools"]
@@ -3603,7 +3618,7 @@ async def show_progress_tracker(query, context, content, user_id: int):
     steps_text = []
     
     # Step 1 & 2: Auto-complete if links are set
-    if step >= 3:
+    if has_links:
         steps_text.append(f"✅ {ui_get(content, 'progress_step_1_title', 'Step 1: Trading Account Setup')}")
         steps_text.append(f"   {ui_get(content, 'progress_step_1_complete', 'Completed!')}")
         steps_text.append("")
@@ -3619,7 +3634,7 @@ async def show_progress_tracker(query, context, content, user_id: int):
         steps_text.append("")
     
     # Step 3: Set links
-    if step >= 3:
+    if has_links:
         steps_text.append(f"✅ {ui_get(content, 'progress_step_3_title', 'Step 3: Set Bot Referral Links')}")
         steps_text.append(f"   {ui_get(content, 'progress_step_3_complete', 'Completed!')}")
     else:
@@ -3632,7 +3647,7 @@ async def show_progress_tracker(query, context, content, user_id: int):
     if visited_sharing:
         steps_text.append(f"✅ {ui_get(content, 'progress_step_4_title', 'Step 4: Investigate Sharing Tools')}")
         steps_text.append(f"   {ui_get(content, 'progress_step_4_complete', 'Completed!')}")
-    elif step >= 3:
+    elif has_links:
         current_marker = "⭐" if not visited_sharing and not shared_invite and not visited_member_tools and not has_team else "⬜"
         steps_text.append(f"{current_marker} {ui_get(content, 'progress_step_4_title', 'Step 4: Investigate Sharing Tools')}")
         if current_marker == "⭐":
@@ -3662,7 +3677,7 @@ async def show_progress_tracker(query, context, content, user_id: int):
     if visited_member_tools:
         steps_text.append(f"✅ {ui_get(content, 'progress_step_6_title', 'Step 6: Investigate Member Tools')}")
         steps_text.append(f"   {ui_get(content, 'progress_step_6_complete', 'Completed!')}")
-    elif step >= 3:
+    elif has_links:
         current_marker = "⭐" if not visited_member_tools and not has_team and (shared_invite or visited_sharing) else "⬜"
         steps_text.append(f"{current_marker} {ui_get(content, 'progress_step_6_title', 'Step 6: Investigate Member Tools')}")
         if current_marker == "⭐":
@@ -3688,7 +3703,7 @@ async def show_progress_tracker(query, context, content, user_id: int):
         steps_text.append(f"   {ui_get(content, 'progress_step_7_unlock', 'Unlock by completing Step 5')}")
     
     # Determine next action
-    if step < 3:
+    if not has_links:
         next_action = ui_get(content, 'progress_step_3_action', 'Set your referral links')
     elif not visited_sharing:
         next_action = ui_get(content, 'progress_step_4_desc', 'Investigate Sharing Tools')
