@@ -1581,52 +1581,64 @@ async def build_personalized_welcome(
     # Get new user's first name
     first_name = update.effective_user.first_name or ""
     first_name_with_comma = f", {first_name}" if first_name else ""
+    user_id = update.effective_user.id
     
     # No sponsor - generic welcome
     if not sponsor_code:
         template = ui_get(content, "welcome_generic", "Welcome!")
-        return template.replace("{first_name_with_comma}", first_name_with_comma).replace("{first_name}", first_name or "there")
-    
-    # Get sponsor stats
-    stats = get_sponsor_welcome_stats(sponsor_code)
-    
-    if not stats:
-        # Invalid sponsor code - generic welcome
-        template = ui_get(content, "welcome_generic", "Welcome!")
-        return template.replace("{first_name_with_comma}", first_name_with_comma).replace("{first_name}", first_name or "there")
-    
-    # Get sponsor's Telegram info
-    try:
-        sponsor_user = await context.bot.get_chat(stats["owner_telegram_id"])
-        sponsor_first_name = sponsor_user.first_name or "Your sponsor"
-        sponsor_last_name = sponsor_user.last_name or ""
-        sponsor_username = f"@{sponsor_user.username}" if sponsor_user.username else ""
-        
-        # Build full name
-        sponsor_name = sponsor_first_name
-        if sponsor_last_name:
-            sponsor_name += f" {sponsor_last_name}"
-        if sponsor_username:
-            sponsor_name += f" {sponsor_username}"
-    except Exception:
-        sponsor_first_name = "Your sponsor"
-        sponsor_name = "Your sponsor"
-    
-    # Choose template based on team_with_links count
-    if stats["team_with_links"] >= 10:
-        # Large team - show stats
-        template = ui_get(content, "welcome_large_team", "Welcome!")
-        message = template.replace("{first_name}", first_name or "there")
-        message = message.replace("{sponsor_name}", sponsor_name)
-        message = message.replace("{sponsor_first_name}", sponsor_first_name)
-        message = message.replace("{team_with_links}", str(stats["team_with_links"]))
-        message = message.replace("{team_size}", str(stats["team_size"]))
+        message = template.replace("{first_name_with_comma}", first_name_with_comma).replace("{first_name}", first_name or "there")
     else:
-        # Small team - encouraging message
-        template = ui_get(content, "welcome_small_team", "Welcome!")
-        message = template.replace("{first_name}", first_name or "there")
-        message = message.replace("{sponsor_name}", sponsor_name)
-        message = message.replace("{sponsor_first_name}", sponsor_first_name)
+        # Get sponsor stats
+        stats = get_sponsor_welcome_stats(sponsor_code)
+        
+        if not stats:
+            # Invalid sponsor code - generic welcome
+            template = ui_get(content, "welcome_generic", "Welcome!")
+            message = template.replace("{first_name_with_comma}", first_name_with_comma).replace("{first_name}", first_name or "there")
+        else:
+            # Get sponsor's Telegram info
+            try:
+                sponsor_user = await context.bot.get_chat(stats["owner_telegram_id"])
+                sponsor_first_name = sponsor_user.first_name or "Your sponsor"
+                sponsor_last_name = sponsor_user.last_name or ""
+                sponsor_username = f"@{sponsor_user.username}" if sponsor_user.username else ""
+                
+                # Build full name
+                sponsor_name = sponsor_first_name
+                if sponsor_last_name:
+                    sponsor_name += f" {sponsor_last_name}"
+                if sponsor_username:
+                    sponsor_name += f" {sponsor_username}"
+            except Exception:
+                sponsor_first_name = "Your sponsor"
+                sponsor_name = "Your sponsor"
+            
+            # Choose template based on team_with_links count
+            if stats["team_with_links"] >= 10:
+                # Large team - show stats
+                template = ui_get(content, "welcome_large_team", "Welcome!")
+                message = template.replace("{first_name}", first_name or "there")
+                message = message.replace("{sponsor_name}", sponsor_name)
+                message = message.replace("{sponsor_first_name}", sponsor_first_name)
+                message = message.replace("{team_with_links}", str(stats["team_with_links"]))
+                message = message.replace("{team_size}", str(stats["team_size"]))
+            else:
+                # Small team - encouraging message
+                template = ui_get(content, "welcome_small_team", "Welcome!")
+                message = template.replace("{first_name}", first_name or "there")
+                message = message.replace("{sponsor_name}", sponsor_name)
+                message = message.replace("{sponsor_first_name}", sponsor_first_name)
+    
+    # Add progress bar if user has links and < 100% complete
+    progress = get_user_progress(user_id)
+    percentage = calculate_progress_percentage(progress, user_id)
+    
+    if percentage < 100 and percentage > 0:
+        filled = int(percentage / 10)
+        empty = 10 - filled
+        progress_bar = "🟦" * filled + "⬜" * empty
+        progress_text = f"\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n🎯 Your Journey: {percentage}% Complete\n{progress_bar}"
+        message = message + progress_text
     
     return message
 
@@ -3767,7 +3779,15 @@ async def show_progress_celebration(context, user_id: int, step: int, content):
     unlock_text = ui_get(content, "progress_celebration_unlock", "🔓 NEW UNLOCK:\n{unlock}")
     unlock_text = unlock_text.replace("{unlock}", unlock_messages.get(step, ""))
     
+    # Build message
     message = f"{title}\n\n{step_complete}\n\n{percentage_text}\n{progress_bar}\n\n{unlock_text}"
+    
+    # Add encouragement for Step 6
+    if step == 6:
+        encouragement = ui_get(content, "progress_celebration_step_6_encouragement", "")
+        if encouragement:
+            separator = "\n\n━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            message = message + separator + encouragement
     
     try:
         await context.bot.send_message(
