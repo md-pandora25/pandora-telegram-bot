@@ -2388,6 +2388,139 @@ Now open the new invite link you want to test, or type /start.""" ),
     )
 
 
+async def resetuser_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Owner-only command to completely reset a user (removes all links and data)."""
+    user_id = update.effective_user.id
+    
+    # Check if user is owner
+    if not is_owner(user_id):
+        await update.message.reply_text("⛔ This command is only available to bot owners.")
+        return
+    
+    args = context.args or []
+    
+    # Usage: /resetuser <bot_code> CONFIRM
+    if len(args) < 1:
+        await update.message.reply_text(
+            """🔄 **RESET USER - Owner Only**
+
+**Usage:** `/resetuser <bot_code> CONFIRM`
+
+**What this does:**
+• Removes user from users table
+• Removes their referral links from referrers table
+• Completely resets their account to non-member state
+• Perfect for testing with the same account repeatedly
+
+**Example:**
+`/resetuser ABC123 CONFIRM`
+
+**⚠️ WARNING:** This action is PERMANENT and cannot be undone!""",
+            parse_mode='Markdown'
+        )
+        return
+    
+    bot_code = args[0].upper()
+    
+    # Look up the telegram_user_id from the bot code
+    db_init()
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    cur.execute("SELECT owner_telegram_id FROM referrers WHERE ref_code = ?", (bot_code,))
+    ref_row = cur.fetchone()
+    
+    if not ref_row:
+        conn.close()
+        await update.message.reply_text(
+            f"❌ **Bot code not found:** `{bot_code}`\n\nMake sure the user has set their referral links.\n\nUse `/allmembers` to see all bot codes.",
+            parse_mode='Markdown'
+        )
+        return
+    
+    target_user_id = ref_row[0]
+    
+    # Require CONFIRM
+    if len(args) < 2 or args[1].upper() != "CONFIRM":
+        # Get user info for preview
+        
+        # Check if user exists in users table
+        cur.execute("SELECT telegram_user_id FROM users WHERE telegram_user_id = ?", (target_user_id,))
+        user_exists = cur.fetchone() is not None
+        
+        conn.close()
+        
+        # Get Telegram name
+        try:
+            user_chat = await context.bot.get_chat(target_user_id)
+            user_name = f"{user_chat.first_name or ''} {user_chat.last_name or ''}".strip()
+            if not user_name:
+                user_name = "No name"
+        except:
+            user_name = "Unable to fetch"
+        
+        await update.message.reply_text(
+            f"""🔄 **RESET USER - Confirmation Required**
+
+**Target User:**
+Bot Code: `{bot_code}`
+Telegram ID: `{target_user_id}`
+Name: {user_name}
+
+**Current Status:**
+User in database: {'✅ Yes' if user_exists else '❌ No'}
+Has referral links: ✅ Yes
+Ref Code: {bot_code}
+
+**What will be deleted:**
+• User entry from users table
+• Referral links from referrers table (code: {bot_code})
+• All associated data
+• Complete account reset
+
+**⚠️ This action is PERMANENT!**
+
+To proceed, type:
+`/resetuser {bot_code} CONFIRM`""",
+            parse_mode='Markdown'
+        )
+        return
+    
+    # Execute reset
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    # Delete from users table
+    cur.execute("DELETE FROM users WHERE telegram_user_id = ?", (target_user_id,))
+    users_deleted = cur.rowcount
+    
+    # Delete from referrers table
+    cur.execute("DELETE FROM referrers WHERE owner_telegram_id = ?", (target_user_id,))
+    refs_deleted = cur.rowcount
+    
+    conn.commit()
+    conn.close()
+    
+    await update.message.reply_text(
+        f"""✅ **USER RESET COMPLETE**
+
+**Bot Code:** `{bot_code}`
+**Telegram ID:** `{target_user_id}`
+
+**Deleted:**
+• Users table: {users_deleted} record(s)
+• Referrers table: {refs_deleted} record(s)
+• Ref code removed: {bot_code}
+
+**Status:** User is now completely reset and can be used for testing.
+
+They will appear as a new user when they next interact with the bot.""",
+        parse_mode='Markdown'
+    )
+
+
+
+
 async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
@@ -5059,29 +5192,11 @@ async def show_share_template_message(query, context, content, user_id: int, sty
     # Replace {LINK} placeholder
     message = template.replace("{LINK}", invite_link)
     
-    # Add header
-    style_names = {
-        "casual": ui_get(content, "style_name_casual", "👋 Casual Friend"),
-        "professional": ui_get(content, "style_name_professional", "💼 Professional"),
-        "social_proof": ui_get(content, "style_name_social_proof", "🚀 Social Proof"),
-        "question": ui_get(content, "style_name_question", "❓ Question Hook"),
-        "value": ui_get(content, "style_name_value", "📚 Value First"),
-        "social_media": ui_get(content, "style_name_social_media", "📱 Social Media")
-    }
-    
-    style_name = style_names.get(style, style.title())
-    
-    header = ui_get(content, "share_template_header", "{style} - Option {option}").replace("{style}", style_name).replace("{option}", str(option))
-    separator = "━━━━━━━━━━━━━━━"
-    
-    copy_instruction = ui_get(content, "share_template_copy_instruction", "📋 Copy the message below and share it:")
-    
-    full_text = f"{header}\n{separator}\n\n{copy_instruction}\n\n{message}"
-    
+    # Show just the message, no header or instructions
     await safe_show_menu_message(
         query,
         context,
-        full_text,
+        message,
         share_template_actions_kb(content, style, option)
     )
 
@@ -5133,6 +5248,7 @@ def main() -> None:
     app.add_handler(CommandHandler("allmembers", allmembers_cmd))
 
     app.add_handler(CommandHandler("reset", reset_cmd))
+    app.add_handler(CommandHandler("resetuser", resetuser_cmd))
 
     app.add_handler(CallbackQueryHandler(on_menu_click, pattern=r"^menu:"))
 
