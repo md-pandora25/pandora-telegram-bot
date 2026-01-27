@@ -5,6 +5,7 @@ import re
 import sqlite3
 import secrets
 import string
+import asyncio
 from datetime import datetime
 from typing import Dict, Any, List, Tuple, Optional
 
@@ -130,6 +131,27 @@ def db_init() -> None:
     # Add created_at column for tracking first interaction
     try:
         cur.execute("ALTER TABLE users ADD COLUMN created_at TEXT DEFAULT CURRENT_TIMESTAMP")
+    except sqlite3.OperationalError:
+        pass
+
+    # Add progress tracking columns for onboarding
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN progress_step INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+    
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN progress_visited_sharing INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+    
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN progress_shared_invite INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
+    
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN progress_visited_member_tools INTEGER DEFAULT 0")
     except sqlite3.OperationalError:
         pass
 
@@ -921,6 +943,135 @@ def url_domain_contains(url: str, domain: str) -> bool:
         return False
 
 
+# ============================================================================
+# PROGRESS TRACKING FUNCTIONS
+# ============================================================================
+
+def get_user_progress(user_id: int) -> Dict[str, Any]:
+    """Get user's onboarding progress."""
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT progress_step, progress_visited_sharing, 
+               progress_shared_invite, progress_visited_member_tools
+        FROM users 
+        WHERE telegram_user_id = ?
+    """, (user_id,))
+    row = cur.fetchone()
+    conn.close()
+    
+    if not row:
+        return {
+            "progress_step": 0,
+            "visited_sharing": 0,
+            "shared_invite": 0,
+            "visited_member_tools": 0
+        }
+    
+    return {
+        "progress_step": row[0] or 0,
+        "visited_sharing": row[1] or 0,
+        "shared_invite": row[2] or 0,
+        "visited_member_tools": row[3] or 0
+    }
+
+
+def update_progress_step(user_id: int, step: int) -> None:
+    """Update user's main progress step."""
+    conn = db_connect()
+    cur = conn.cursor()
+    # Only update if new step is higher
+    cur.execute("""
+        UPDATE users 
+        SET progress_step = MAX(progress_step, ?)
+        WHERE telegram_user_id = ?
+    """, (step, user_id))
+    conn.commit()
+    conn.close()
+
+
+def mark_progress_action(user_id: int, action: str) -> None:
+    """Mark a progress action as complete."""
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    if action == "visited_sharing":
+        cur.execute("UPDATE users SET progress_visited_sharing = 1 WHERE telegram_user_id = ?", (user_id,))
+    elif action == "shared_invite":
+        cur.execute("UPDATE users SET progress_shared_invite = 1 WHERE telegram_user_id = ?", (user_id,))
+    elif action == "visited_member_tools":
+        cur.execute("UPDATE users SET progress_visited_member_tools = 1 WHERE telegram_user_id = ?", (user_id,))
+    
+    conn.commit()
+    conn.close()
+
+
+def calculate_progress_percentage(progress: Dict[str, Any], user_id: int) -> int:
+    """Calculate overall progress percentage based on completed steps."""
+    step = progress["progress_step"]
+    visited_sharing = progress["visited_sharing"]
+    shared_invite = progress["shared_invite"]
+    visited_member_tools = progress["visited_member_tools"]
+    
+    # Check if user has first team member (Step 7)
+    has_team_member = has_team_member_with_links(user_id)
+    
+    # Count completed steps
+    completed = 0
+    total = 7
+    
+    # Step 1-2: Auto-complete if user has set links (step >= 3)
+    if step >= 3:
+        completed += 2  # Steps 1 and 2
+    
+    # Step 3: Set bot links
+    if step >= 3:
+        completed += 1
+    
+    # Step 4: Visited Sharing Tools
+    if visited_sharing:
+        completed += 1
+    
+    # Step 5: Shared invite
+    if shared_invite:
+        completed += 1
+    
+    # Step 6: Visited Member Tools
+    if visited_member_tools:
+        completed += 1
+    
+    # Step 7: First team member
+    if has_team_member:
+        completed += 1
+    
+    return int((completed / total) * 100)
+
+
+def has_team_member_with_links(user_id: int) -> bool:
+    """Check if user has at least one team member who has set their links."""
+    ref = get_referrer_by_owner(user_id)
+    if not ref:
+        return False
+    
+    ref_code = ref["ref_code"]
+    
+    conn = db_connect()
+    cur = conn.cursor()
+    
+    # Find users sponsored by this ref_code who also have their own ref_code
+    cur.execute("""
+        SELECT COUNT(*) 
+        FROM users u
+        INNER JOIN referrers r ON u.telegram_user_id = r.owner_telegram_id
+        WHERE u.sponsor_code = ?
+    """, (ref_code,))
+    
+    count = cur.fetchone()[0]
+    conn.close()
+    
+    return count > 0
+
+
 # PRIORITY 2 IMPROVEMENT: Dedicated URL validation functions
 def validate_step1_url(url: str) -> bool:
     """
@@ -1221,6 +1372,7 @@ def affiliate_tools_kb(content: Dict[str, Any]) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(ui_get(content, "menu_set_links", "🔗 Set Referral Links"), callback_data="affiliate:set_links")],
         [InlineKeyboardButton(ui_get(content, "check_ref_links_btn", "🔍 Check My Referral Links"), callback_data="affiliate:check_links")],
         [InlineKeyboardButton(ui_get(content, "my_team_stats_btn", "👥 Member Tools"), callback_data="mystats:hub")],
+        [InlineKeyboardButton("🎯 View Full Progress", callback_data="progress:view")],
         [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
     ])
 
@@ -2624,7 +2776,26 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     if action == "affiliate_tools":
+        # Track visit to Sharing Tools (Step 4)
+        user_id = query.from_user.id
+        progress = get_user_progress(user_id)
+        
+        if not progress["visited_sharing"] and progress["progress_step"] >= 3:
+            mark_progress_action(user_id, "visited_sharing")
+            # Trigger celebration
+            asyncio.create_task(show_progress_celebration(context, user_id, 4, content))
+        
         title = ui_get(content, "affiliate_tools_title", "🛠 Affiliate Tools\n\nSelect an option:")
+        
+        # If progress < 100%, show mini progress indicator
+        percentage = calculate_progress_percentage(progress, user_id)
+        if percentage < 100:
+            filled = int(percentage / 10)
+            empty = 10 - filled
+            progress_bar = "🟦" * filled + "⬜" * empty
+            progress_text = f"\n\n🎯 Journey Progress: {percentage}%\n{progress_bar}"
+            title = title + progress_text
+        
         await safe_show_menu_message(query, context, title, affiliate_tools_kb(content))
         return
 
@@ -2810,6 +2981,14 @@ async def on_affiliate_click(update: Update, context: ContextTypes.DEFAULT_TYPE)
         if not ref:
             await safe_show_menu_message(query, context, ui_get(content, "ref_not_set", "Set your links first."), sharing_tools_submenu_kb(content))
             return
+        
+        # Track sharing action (Step 5)
+        progress = get_user_progress(user_id)
+        if not progress["shared_invite"] and progress["visited_sharing"]:
+            mark_progress_action(user_id, "shared_invite")
+            # Trigger celebration
+            asyncio.create_task(show_progress_celebration(context, user_id, 5, content))
+        
         # Show template chooser
         await show_share_template_chooser(query, context, content, user_id)
         return
@@ -3228,6 +3407,14 @@ async def on_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         context.user_data["temp_step1_url"] = ""
         context.user_data["temp_step2_url"] = ""
         context.user_data["awaiting_step2_url"] = False
+        
+        # Update progress to Step 3 and trigger celebration
+        old_progress = get_user_progress(user_id)
+        if old_progress["progress_step"] < 3:
+            update_progress_step(user_id, 3)
+            # Trigger celebration asynchronously
+            asyncio.create_task(show_progress_celebration(context, user_id, 3, content))
+        
         invite = build_invite_link(ref["ref_code"], content)
         done_tpl = ui_get(content, "ref_saved_done", "✅ Saved! {invite}")
         done_text = done_tpl.replace("{invite}", invite)
@@ -3321,6 +3508,13 @@ async def on_mystats_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await safe_show_menu_message(query, context, full_message, unlock_kb)
         return
     
+    # Track visit to Member Tools (Step 6)
+    progress = get_user_progress(user_id)
+    if not progress["visited_member_tools"] and progress["progress_step"] >= 3:
+        mark_progress_action(user_id, "visited_member_tools")
+        # Trigger celebration
+        asyncio.create_task(show_progress_celebration(context, user_id, 6, content))
+    
     # Route to appropriate handler
     if action == "hub":
         # My Stats Hub
@@ -3366,6 +3560,208 @@ async def on_mystats_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     elif action == "milestones":
         # My Milestones screen
         await show_my_milestones(query, context, content, user_id)
+
+
+async def show_progress_tracker(query, context, content, user_id: int):
+    """Display the onboarding progress tracker."""
+    progress = get_user_progress(user_id)
+    percentage = calculate_progress_percentage(progress, user_id)
+    
+    # Check individual step status
+    step = progress["progress_step"]
+    visited_sharing = progress["visited_sharing"]
+    shared_invite = progress["shared_invite"]
+    visited_member_tools = progress["visited_member_tools"]
+    has_team = has_team_member_with_links(user_id)
+    
+    # Build progress bar (10 blocks)
+    filled = int(percentage / 10)
+    empty = 10 - filled
+    progress_bar = "🟦" * filled + "⬜" * empty
+    
+    # Check if 100% complete
+    if percentage >= 100:
+        # Show completion celebration
+        title = ui_get(content, "progress_100_title", "🏆🎊 JOURNEY COMPLETE! 🎊🏆")
+        message = ui_get(content, "progress_100_message", "Congratulations! You've completed your Pandora AI journey!")
+        cta_text = ui_get(content, "progress_100_cta", "🚀 Keep Building")
+        
+        kb = InlineKeyboardMarkup([
+            [InlineKeyboardButton(cta_text, callback_data="menu:affiliate_tools")],
+            [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+        ])
+        
+        full_text = f"{title}\n\n{message}"
+        await safe_show_menu_message(query, context, full_text, kb)
+        return
+    
+    # Build title
+    title = ui_get(content, "progress_tracker_title", "🎯 YOUR PANDORA AI JOURNEY")
+    progress_text = ui_get(content, "progress_complete", "Progress: {percent}% Complete").replace("{percent}", str(percentage))
+    
+    # Build step displays
+    steps_text = []
+    
+    # Step 1 & 2: Auto-complete if links are set
+    if step >= 3:
+        steps_text.append(f"✅ {ui_get(content, 'progress_step_1_title', 'Step 1: Trading Account Setup')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_1_complete', 'Completed!')}")
+        steps_text.append("")
+        steps_text.append(f"✅ {ui_get(content, 'progress_step_2_title', 'Step 2: Affiliate Account Setup')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_2_complete', 'Completed!')}")
+        steps_text.append("")
+    else:
+        steps_text.append(f"⬜ {ui_get(content, 'progress_step_1_title', 'Step 1: Trading Account Setup')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_1_desc', 'Funded & connected')}")
+        steps_text.append("")
+        steps_text.append(f"⬜ {ui_get(content, 'progress_step_2_title', 'Step 2: Affiliate Account Setup')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_2_desc', 'Request approved')}")
+        steps_text.append("")
+    
+    # Step 3: Set links
+    if step >= 3:
+        steps_text.append(f"✅ {ui_get(content, 'progress_step_3_title', 'Step 3: Set Bot Referral Links')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_3_complete', 'Completed!')}")
+    else:
+        steps_text.append(f"⭐ {ui_get(content, 'progress_step_3_title', 'Step 3: Set Bot Referral Links')}")
+        steps_text.append(f"   {ui_get(content, 'progress_you_are_here', '⚡ YOU ARE HERE')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_3_action', 'Action: Set links')}")
+    steps_text.append("")
+    
+    # Step 4: Visited Sharing Tools
+    if visited_sharing:
+        steps_text.append(f"✅ {ui_get(content, 'progress_step_4_title', 'Step 4: Investigate Sharing Tools')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_4_complete', 'Completed!')}")
+    elif step >= 3:
+        current_marker = "⭐" if not visited_sharing and not shared_invite and not visited_member_tools and not has_team else "⬜"
+        steps_text.append(f"{current_marker} {ui_get(content, 'progress_step_4_title', 'Step 4: Investigate Sharing Tools')}")
+        if current_marker == "⭐":
+            steps_text.append(f"   {ui_get(content, 'progress_you_are_here', '⚡ YOU ARE HERE')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_4_desc', 'Explore sharing options')}")
+    else:
+        steps_text.append(f"🔒 {ui_get(content, 'progress_step_4_title', 'Step 4: Investigate Sharing Tools')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_4_unlock', 'Unlock by completing Step 3')}")
+    steps_text.append("")
+    
+    # Step 5: Shared invite
+    if shared_invite:
+        steps_text.append(f"✅ {ui_get(content, 'progress_step_5_title', 'Step 5: Share First Invite')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_5_complete', 'Completed!')}")
+    elif visited_sharing:
+        current_marker = "⭐" if not shared_invite and not visited_member_tools and not has_team else "⬜"
+        steps_text.append(f"{current_marker} {ui_get(content, 'progress_step_5_title', 'Step 5: Share First Invite')}")
+        if current_marker == "⭐":
+            steps_text.append(f"   {ui_get(content, 'progress_you_are_here', '⚡ YOU ARE HERE')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_5_desc', 'Send to at least 1 person')}")
+    else:
+        steps_text.append(f"🔒 {ui_get(content, 'progress_step_5_title', 'Step 5: Share First Invite')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_5_unlock', 'Unlock by completing Step 4')}")
+    steps_text.append("")
+    
+    # Step 6: Visited Member Tools
+    if visited_member_tools:
+        steps_text.append(f"✅ {ui_get(content, 'progress_step_6_title', 'Step 6: Investigate Member Tools')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_6_complete', 'Completed!')}")
+    elif step >= 3:
+        current_marker = "⭐" if not visited_member_tools and not has_team and (shared_invite or visited_sharing) else "⬜"
+        steps_text.append(f"{current_marker} {ui_get(content, 'progress_step_6_title', 'Step 6: Investigate Member Tools')}")
+        if current_marker == "⭐":
+            steps_text.append(f"   {ui_get(content, 'progress_you_are_here', '⚡ YOU ARE HERE')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_6_desc', 'Understand your stats')}")
+    else:
+        steps_text.append(f"🔒 {ui_get(content, 'progress_step_6_title', 'Step 6: Investigate Member Tools')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_6_unlock', 'Unlock by completing Step 3')}")
+    steps_text.append("")
+    
+    # Step 7: First team member
+    if has_team:
+        steps_text.append(f"✅ {ui_get(content, 'progress_step_7_title', 'Step 7: First Team Member')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_7_complete', 'Completed!')}")
+    elif shared_invite:
+        current_marker = "⭐" if not has_team else "⬜"
+        steps_text.append(f"{current_marker} {ui_get(content, 'progress_step_7_title', 'Step 7: First Team Member')}")
+        if current_marker == "⭐":
+            steps_text.append(f"   {ui_get(content, 'progress_you_are_here', '⚡ YOU ARE HERE')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_7_desc', 'Someone completed Step 3')}")
+    else:
+        steps_text.append(f"🔒 {ui_get(content, 'progress_step_7_title', 'Step 7: First Team Member')}")
+        steps_text.append(f"   {ui_get(content, 'progress_step_7_unlock', 'Unlock by completing Step 5')}")
+    
+    # Determine next action
+    if step < 3:
+        next_action = ui_get(content, 'progress_step_3_action', 'Set your referral links')
+    elif not visited_sharing:
+        next_action = ui_get(content, 'progress_step_4_desc', 'Investigate Sharing Tools')
+    elif not shared_invite:
+        next_action = ui_get(content, 'progress_step_5_desc', 'Share your first invite')
+    elif not visited_member_tools:
+        next_action = ui_get(content, 'progress_step_6_desc', 'Investigate Member Tools')
+    else:
+        next_action = ui_get(content, 'progress_step_7_desc', 'Get your first team member')
+    
+    # Build full message
+    separator = "━━━━━━━━━━━━━━━━━━━━━━"
+    next_action_text = ui_get(content, "progress_next_action", "Next Action: {action}").replace("{action}", next_action)
+    
+    full_message = f"{title}\n\n{progress_text}\n{progress_bar}\n\n{separator}\n\n" + "\n".join(steps_text) + f"\n{separator}\n\n{next_action_text}"
+    
+    # Build keyboard
+    kb = InlineKeyboardMarkup([
+        [InlineKeyboardButton(ui_get(content, "back_to_sharing_tools", "⬅️ Back to Sharing Tools"), callback_data="menu:affiliate_tools")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]
+    ])
+    
+    await safe_show_menu_message(query, context, full_message, kb)
+
+
+async def show_progress_celebration(context, user_id: int, step: int, content):
+    """Show celebration when user completes a progress step."""
+    progress = get_user_progress(user_id)
+    percentage = calculate_progress_percentage(progress, user_id)
+    
+    # Get step title
+    step_titles = {
+        3: ui_get(content, "progress_step_3_title", "Set Bot Referral Links"),
+        4: ui_get(content, "progress_step_4_title", "Investigate Sharing Tools"),
+        5: ui_get(content, "progress_step_5_title", "Share First Invite"),
+        6: ui_get(content, "progress_step_6_title", "Investigate Member Tools"),
+        7: ui_get(content, "progress_step_7_title", "First Team Member")
+    }
+    
+    # Get unlock message
+    unlock_messages = {
+        3: ui_get(content, "progress_celebration_step_3_unlock", "Member Tools now available!"),
+        4: ui_get(content, "progress_celebration_step_4_unlock", "You can now share invites!"),
+        5: ui_get(content, "progress_celebration_step_5_unlock", "Keep sharing to build your team!"),
+        6: ui_get(content, "progress_celebration_step_6_unlock", "Full stats & analytics available!"),
+        7: ui_get(content, "progress_celebration_step_7_unlock", "You're officially building a team!")
+    }
+    
+    title = ui_get(content, "progress_celebration_title", "🎊🎉 PROGRESS UPDATE! 🎉🎊")
+    step_complete = ui_get(content, "progress_celebration_step_complete", "🎯 Step {step} Complete!\n{title}")
+    step_complete = step_complete.replace("{step}", str(step)).replace("{title}", step_titles.get(step, ""))
+    
+    percentage_text = ui_get(content, "progress_celebration_percentage", "You're {percent}% through your journey!")
+    percentage_text = percentage_text.replace("{percent}", str(percentage))
+    
+    # Progress bar
+    filled = int(percentage / 10)
+    empty = 10 - filled
+    progress_bar = "🟦" * filled + "⬜" * empty
+    
+    unlock_text = ui_get(content, "progress_celebration_unlock", "🔓 NEW UNLOCK:\n{unlock}")
+    unlock_text = unlock_text.replace("{unlock}", unlock_messages.get(step, ""))
+    
+    message = f"{title}\n\n{step_complete}\n\n{percentage_text}\n{progress_bar}\n\n{unlock_text}"
+    
+    try:
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=message,
+            parse_mode=None
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send progress celebration: {e}")
 
 
 async def show_mystats_hub(query, context, content):
@@ -4581,6 +4977,23 @@ async def on_action_click(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         await show_share_achievement(query, context, content_obj, query.from_user.id)
 
 
+async def on_progress_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle progress tracker callback."""
+    query = update.callback_query
+    await query.answer()
+    
+    all_content = load_all_content()
+    content = get_active_content(context, all_content)
+    user_id = query.from_user.id
+    
+    data = query.data or ""
+    action = data.split(":", 1)[1] if ":" in data else ""
+    
+    if action == "view":
+        # Show full progress tracker
+        await show_progress_tracker(query, context, content, user_id)
+
+
 async def show_my_actions(query, context, content, user_id: int):
     """Show My Actions screen with TOP 3 most impactful smart suggestions."""
     stats = get_personal_stats(user_id)
@@ -5266,6 +5679,7 @@ def main() -> None:
     app.add_handler(CallbackQueryHandler(on_affiliate_click, pattern=r"^affiliate:"))
     app.add_handler(CallbackQueryHandler(on_mystats_click, pattern=r"^mystats:"))
     app.add_handler(CallbackQueryHandler(on_action_click, pattern=r"^action:"))
+    app.add_handler(CallbackQueryHandler(on_progress_click, pattern=r"^progress:"))
     app.add_handler(CallbackQueryHandler(on_invite_click, pattern=r"^share_tpl:"))
     app.add_handler(CallbackQueryHandler(on_invite_click, pattern=r"^share_opt:"))
     app.add_handler(CallbackQueryHandler(on_language_click, pattern=r"^lang:set:"))
