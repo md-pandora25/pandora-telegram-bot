@@ -2770,6 +2770,22 @@ async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     if action == "join":
+        # Check if sponsor confirmation is needed
+        user_id = query.from_user.id
+        state = get_user_state(user_id)
+        sponsor_code = state.get("sponsor_code")
+        sponsor_confirmed = state.get("sponsor_confirmed", False)
+        
+        # If user has a sponsor but hasn't confirmed yet, show confirmation screen
+        if sponsor_code and not sponsor_confirmed:
+            ref = get_referrer_by_code(sponsor_code)
+            if ref:
+                sponsor_step1_url = ref.get("step1_url")
+                sponsor_step2_url = ref.get("step2_url")
+                await show_sponsor_confirmation_screen(query, context, content, user_id, sponsor_code, sponsor_step1_url, sponsor_step2_url)
+                return
+        
+        # Sponsor confirmed or no sponsor - show normal Join menu
         await safe_show_menu_message(query, context, ui_get(content, "join_title", "🤝 How to Join\n\nChoose an option:"), join_home_kb(content))
         return
 
