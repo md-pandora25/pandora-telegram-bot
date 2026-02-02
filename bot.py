@@ -3715,7 +3715,11 @@ async def show_progress_tracker(query, context, content, user_id: int):
         steps_text.append(f"   {ui_get(content, 'progress_step_7_unlock', 'Unlock by completing Step 5')}")
     
     # Determine next action
-    if not has_links:
+    if not step1_confirmed and not has_links:
+        next_action = ui_get(content, 'progress_step_1_confirm_prompt', 'Confirm Step 1')
+    elif not step2_confirmed and not has_links:
+        next_action = ui_get(content, 'progress_step_2_confirm_prompt', 'Confirm Step 2')
+    elif not has_links:
         next_action = ui_get(content, 'progress_step_3_action', 'Set your referral links')
     elif not visited_sharing:
         next_action = ui_get(content, 'progress_step_4_desc', 'Investigate Sharing Tools')
@@ -3732,11 +3736,33 @@ async def show_progress_tracker(query, context, content, user_id: int):
     
     full_message = f"{title}\n\n{progress_text}\n{progress_bar}\n\n{separator}\n\n" + "\n".join(steps_text) + f"\n{separator}\n\n{next_action_text}"
     
-    # Build keyboard - add Set Links button if user hasn't set links yet
+    # Build keyboard - add action buttons based on current step
     buttons = []
     
-    if not has_links:
-        # User needs to set links - add the button
+    # Step 1 confirmation needed
+    if not step1_confirmed and not has_links:
+        buttons.append([InlineKeyboardButton(
+            ui_get(content, "progress_step_1_confirm_btn", "✅ Yes, Step 1 Complete"),
+            callback_data="progress:confirm_step1"
+        )])
+        buttons.append([InlineKeyboardButton(
+            ui_get(content, "progress_step_1_help_btn", "📄 How to set up trading"),
+            callback_data="menu:join"  # Links to Join menu
+        )])
+    
+    # Step 2 confirmation needed
+    elif not step2_confirmed and not has_links and step1_confirmed:
+        buttons.append([InlineKeyboardButton(
+            ui_get(content, "progress_step_2_confirm_btn", "✅ Yes, Step 2 Complete"),
+            callback_data="progress:confirm_step2"
+        )])
+        buttons.append([InlineKeyboardButton(
+            ui_get(content, "progress_step_2_help_btn", "📄 How to become an affiliate"),
+            callback_data="menu:join"  # Links to Join menu
+        )])
+    
+    # Step 3 - Set Links button
+    elif not has_links:
         buttons.append([InlineKeyboardButton(
             ui_get(content, "menu_set_links", "🔗 Set Referral Links"), 
             callback_data="affiliate:set_links"
@@ -3764,6 +3790,8 @@ async def show_progress_celebration(context, user_id: int, step: int, content):
     
     # Get step title
     step_titles = {
+        1: ui_get(content, "progress_step_1_title", "Trading Account Setup"),
+        2: ui_get(content, "progress_step_2_title", "Affiliate Account Setup"),
         3: ui_get(content, "progress_step_3_title", "Set Bot Referral Links"),
         4: ui_get(content, "progress_step_4_title", "Investigate Sharing Tools"),
         5: ui_get(content, "progress_step_5_title", "Share First Invite"),
@@ -3773,6 +3801,8 @@ async def show_progress_celebration(context, user_id: int, step: int, content):
     
     # Get unlock message
     unlock_messages = {
+        1: ui_get(content, "progress_celebration_step_1_unlock", "Step 2 now unlocked!"),
+        2: ui_get(content, "progress_celebration_step_2_unlock", "You can now set your bot links!"),
         3: ui_get(content, "progress_celebration_step_3_unlock", "Member Tools now available!"),
         4: ui_get(content, "progress_celebration_step_4_unlock", "You can now share invites!"),
         5: ui_get(content, "progress_celebration_step_5_unlock", "Keep sharing to build your team!"),
@@ -5043,6 +5073,23 @@ async def on_progress_click(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if action == "view":
         # Show full progress tracker
         await show_progress_tracker(query, context, content, user_id)
+    
+    elif action == "confirm_step1":
+        # User confirms Step 1 completion
+        mark_progress_action(user_id, "step1_confirmed")
+        # Show celebration
+        asyncio.create_task(show_progress_celebration(context, user_id, 1, content))
+        # Refresh progress tracker
+        await show_progress_tracker(query, context, content, user_id)
+    
+    elif action == "confirm_step2":
+        # User confirms Step 2 completion
+        mark_progress_action(user_id, "step2_confirmed")
+        # Show celebration
+        asyncio.create_task(show_progress_celebration(context, user_id, 2, content))
+        # Refresh progress tracker
+        await show_progress_tracker(query, context, content, user_id)
+
 
 
 async def show_my_actions(query, context, content, user_id: int):
