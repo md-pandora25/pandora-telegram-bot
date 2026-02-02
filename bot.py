@@ -2696,6 +2696,49 @@ They will appear as a new user when they next interact with the bot.""",
     )
 
 
+async def show_sponsor_confirmation_screen(query, context, content, user_id: int, sponsor_code: str, sponsor_step1_url: str, sponsor_step2_url: str):
+    """Show sponsor confirmation screen before allowing access to Join steps."""
+    
+    # Get sponsor's name
+    sponsor_name = "Unknown"
+    try:
+        ref = get_referrer_by_code(sponsor_code)
+        if ref:
+            sponsor_telegram_id = ref.get("owner_telegram_id")
+            if sponsor_telegram_id:
+                sponsor_chat = await context.bot.get_chat(sponsor_telegram_id)
+                sponsor_first_name = sponsor_chat.first_name or ""
+                sponsor_last_name = sponsor_chat.last_name or ""
+                sponsor_name = sponsor_first_name
+                if sponsor_last_name:
+                    sponsor_name += f" {sponsor_last_name}"
+                if not sponsor_name.strip():
+                    sponsor_name = "Your Sponsor"
+    except Exception as e:
+        logger.warning(f"Could not get sponsor name: {e}")
+        sponsor_name = "Your Sponsor"
+    
+    # Extract affiliate ID from sponsor's Step 1 URL
+    affiliate_id = extract_affiliate_id(sponsor_step1_url) if sponsor_step1_url else "Unknown"
+    
+    # Build confirmation message
+    confirm_title = ui_get(content, "sponsor_confirm_title", "📢 CONFIRM YOUR SPONSOR")
+    confirm_msg = ui_get(content, "sponsor_confirm_message",
+        "You are about to use referral links from your sponsor:\n\n👤 {sponsor_name}\nBot Code: {sponsor_code}\nAffiliate ID: {affiliate_id}\n\n⚠️ IMPORTANT:\nOnce confirmed, your sponsor is PERMANENT and cannot be changed.\n\n✅ Is this the correct sponsor?")
+    
+    confirm_msg = confirm_msg.replace("{sponsor_name}", sponsor_name)
+    confirm_msg = confirm_msg.replace("{sponsor_code}", sponsor_code)
+    confirm_msg = confirm_msg.replace("{affiliate_id}", affiliate_id or "Unknown")
+    
+    # Build keyboard
+    buttons = [
+        [InlineKeyboardButton(ui_get(content, "sponsor_confirm_yes", "✅ Yes, This is Correct"), callback_data="join:confirm_sponsor_yes")],
+        [InlineKeyboardButton(ui_get(content, "sponsor_confirm_no", "❌ No, Wrong Sponsor"), callback_data="join:confirm_sponsor_no")],
+        [InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to Menu"), callback_data="menu:home")]
+    ]
+    kb = InlineKeyboardMarkup(buttons)
+    
+    await safe_show_menu_message(query, context, f"{confirm_title}\n\n{confirm_msg}", kb)
 
 
 async def on_menu_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -3145,6 +3188,7 @@ async def on_join_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     sponsor_code = state.get("sponsor_code")
     step1_confirmed = state.get("step1_confirmed", False)
     step2_ack = state.get("step2_warning_ack", False)
+    sponsor_confirmed = state.get("sponsor_confirmed", False)
 
     sponsor_step1_url = None
     sponsor_step2_url = None
@@ -3156,6 +3200,35 @@ async def on_join_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     step1_doc_url = (content.get("join_step1_doc_url") or "").strip()
     step2_doc_url = (content.get("join_step2_doc_url") or "").strip()
+
+    # Handle sponsor confirmation actions
+    if action == "confirm_sponsor_yes":
+        # User confirmed their sponsor
+        set_sponsor_confirmed(user_id, True)
+        
+        # Show success message
+        success_title = ui_get(content, "sponsor_confirmed_title", "✅ SPONSOR CONFIRMED")
+        success_msg = ui_get(content, "sponsor_confirmed_message", 
+            "Your sponsor has been set permanently.\n\nYou can now proceed with the registration steps.")
+        
+        await safe_show_menu_message(query, context, f"{success_title}\n\n{success_msg}", join_home_kb(content))
+        return
+    
+    if action == "confirm_sponsor_no":
+        # User says wrong sponsor - show instructions
+        wrong_sponsor_title = ui_get(content, "wrong_sponsor_title", "⚠️ WRONG SPONSOR")
+        wrong_sponsor_msg = ui_get(content, "wrong_sponsor_instructions",
+            "To connect to the correct sponsor:\n\n1️⃣ Exit this bot\n\n2️⃣ Ask your correct sponsor for their unique bot link\n\n3️⃣ Click their bot link to connect\n\n4️⃣ Return here to confirm\n\nYour current sponsor will be replaced when you click the new link.")
+        
+        kb = InlineKeyboardMarkup([[InlineKeyboardButton(ui_get(content, "back_to_menu", "⬅️ Back to menu"), callback_data="menu:home")]])
+        await safe_show_menu_message(query, context, f"{wrong_sponsor_title}\n\n{wrong_sponsor_msg}", kb)
+        return
+    
+    # If sponsor not confirmed yet and user is trying to access Join home, show confirmation screen
+    if action == "home" and sponsor_code and not sponsor_confirmed:
+        # Show sponsor confirmation screen
+        await show_sponsor_confirmation_screen(query, context, content, user_id, sponsor_code, sponsor_step1_url, sponsor_step2_url)
+        return
 
     if action == "step1":
         text = ui_get(content, "join_step1_title", "🤝 Step One – Register and Trade")
