@@ -957,12 +957,17 @@ def get_referrer_by_owner(owner_telegram_id: int) -> Optional[Dict[str, Any]]:
 def get_referrer_by_code(ref_code: str) -> Optional[Dict[str, Any]]:
     conn = db_connect()
     cur = conn.cursor()
-    cur.execute("SELECT ref_code, step1_url, step2_url FROM referrers WHERE ref_code=?", (ref_code,))
+    cur.execute("SELECT ref_code, owner_telegram_id, step1_url, step2_url FROM referrers WHERE ref_code=?", (ref_code,))
     row = cur.fetchone()
     conn.close()
     if not row:
         return None
-    return {"ref_code": row["ref_code"], "step1_url": row["step1_url"], "step2_url": row["step2_url"]}
+    return {
+        "ref_code": row["ref_code"],
+        "owner_telegram_id": row["owner_telegram_id"],
+        "step1_url": row["step1_url"],
+        "step2_url": row["step2_url"]
+    }
 
 
 def upsert_referrer(owner_telegram_id: int, step1_url: str, step2_url: str) -> Dict[str, Any]:
