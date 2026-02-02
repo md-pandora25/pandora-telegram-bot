@@ -164,6 +164,44 @@ def generate_ref_code(length: int = 6) -> str:
     return "".join(secrets.choice(alphabet) for _ in range(length))
 
 
+def extract_affiliate_id(url: str) -> Optional[str]:
+    """Extract affiliate ID (bta parameter) from URL.
+    
+    Returns the 5-6 digit number after 'bta=' in the URL.
+    Example: https://partner.axisfunded.com/visit/?bta=36191&brand=pandora
+    Returns: "36191"
+    """
+    if not url:
+        return None
+    
+    try:
+        match = re.search(r'bta=(\d{5,6})', url)
+        return match.group(1) if match else None
+    except Exception as e:
+        logger.warning(f"Failed to extract affiliate ID from URL: {e}")
+        return None
+
+
+def validate_affiliate_id_match(step1_url: str, step2_url: str) -> Dict[str, Any]:
+    """Validate that Step 1 and Step 2 URLs have matching affiliate IDs.
+    
+    Returns:
+        {"valid": True, "affiliate_id": "36191"} if match
+        {"valid": False, "error": "missing_id"} if ID not found
+        {"valid": False, "error": "mismatch", "id1": "36191", "id2": "45678"} if mismatch
+    """
+    id1 = extract_affiliate_id(step1_url)
+    id2 = extract_affiliate_id(step2_url)
+    
+    if not id1 or not id2:
+        return {"valid": False, "error": "missing_id", "id1": id1, "id2": id2}
+    
+    if id1 != id2:
+        return {"valid": False, "error": "mismatch", "id1": id1, "id2": id2}
+    
+    return {"valid": True, "affiliate_id": id1}
+
+
 def get_bot_version() -> str:
     """Get current bot version from environment variable."""
     return (os.environ.get("BOT_VERSION") or "1.0.0").strip()
@@ -358,6 +396,24 @@ def set_step2_warning_ack(telegram_user_id: int, ack: bool) -> None:
             updated_at=CURRENT_TIMESTAMP
         """,
         (telegram_user_id, 1 if ack else 0),
+    )
+    conn.commit()
+    conn.close()
+
+
+def set_sponsor_confirmed(telegram_user_id: int, confirmed: bool) -> None:
+    """Set sponsor confirmation status for a user."""
+    conn = db_connect()
+    cur = conn.cursor()
+    cur.execute(
+        """
+        INSERT INTO users (telegram_user_id, sponsor_code, step1_confirmed, step2_warning_ack, sponsor_confirmed)
+        VALUES (?, NULL, 0, 0, ?)
+        ON CONFLICT(telegram_user_id) DO UPDATE SET
+            sponsor_confirmed=excluded.sponsor_confirmed,
+            updated_at=CURRENT_TIMESTAMP
+        """,
+        (telegram_user_id, 1 if confirmed else 0),
     )
     conn.commit()
     conn.close()
