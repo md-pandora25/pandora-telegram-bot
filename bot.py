@@ -154,6 +154,12 @@ def db_init() -> None:
         cur.execute("ALTER TABLE users ADD COLUMN progress_visited_member_tools INTEGER DEFAULT 0")
     except sqlite3.OperationalError:
         pass
+    
+    # Add sponsor confirmation column
+    try:
+        cur.execute("ALTER TABLE users ADD COLUMN sponsor_confirmed INTEGER DEFAULT 0")
+    except sqlite3.OperationalError:
+        pass
 
     conn.commit()
     conn.close()
