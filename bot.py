@@ -359,17 +359,23 @@ def get_user_state(telegram_user_id: int) -> Dict[str, Any]:
     conn = db_connect()
     cur = conn.cursor()
     cur.execute(
-        "SELECT sponsor_code, step1_confirmed, step2_warning_ack FROM users WHERE telegram_user_id=?",
+        "SELECT sponsor_code, step1_confirmed, step2_warning_ack, sponsor_confirmed FROM users WHERE telegram_user_id=?",
         (telegram_user_id,),
     )
     row = cur.fetchone()
     conn.close()
     if not row:
-        return {"sponsor_code": None, "step1_confirmed": False, "step2_warning_ack": False}
+        return {
+            "sponsor_code": None,
+            "step1_confirmed": False,
+            "step2_warning_ack": False,
+            "sponsor_confirmed": False
+        }
     return {
         "sponsor_code": row["sponsor_code"],
         "step1_confirmed": bool(row["step1_confirmed"]),
         "step2_warning_ack": bool(row["step2_warning_ack"]),
+        "sponsor_confirmed": bool(row["sponsor_confirmed"]),
     }
 
 
