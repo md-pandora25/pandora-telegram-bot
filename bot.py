@@ -1592,7 +1592,15 @@ async def safe_show_menu_message(query, context: ContextTypes.DEFAULT_TYPE, text
         await query.edit_message_text(text, reply_markup=reply_markup)
     except Exception as e:
         logger.warning("edit_message_text failed, sending new message instead: %s", e)
-        await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+        try:
+            await context.bot.send_message(chat_id=chat_id, text=text, reply_markup=reply_markup)
+        except Exception as e2:
+            logger.error("send_message also failed: %s", e2)
+            # Last resort: try to send without markup
+            try:
+                await context.bot.send_message(chat_id=chat_id, text=text)
+            except Exception as e3:
+                logger.error("All message sending attempts failed: %s", e3)
 
 
 def get_sponsor_welcome_stats(sponsor_code: str) -> Optional[Dict[str, Any]]:
@@ -3264,8 +3272,10 @@ async def on_join_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
 
     # Handle sponsor confirmation actions
     if action == "confirm_sponsor_yes":
+        logger.info(f"User {user_id} confirming sponsor")
         # User confirmed their sponsor
         set_sponsor_confirmed(user_id, True)
+        logger.info(f"Sponsor confirmed for user {user_id}, showing success message")
         
         # Show success message
         success_title = ui_get(content, "sponsor_confirmed_title", "✅ SPONSOR CONFIRMED")
@@ -3273,6 +3283,7 @@ async def on_join_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             "Your sponsor has been set permanently.\n\nYou can now proceed with the registration steps.")
         
         await safe_show_menu_message(query, context, f"{success_title}\n\n{success_msg}", join_home_kb(content))
+        logger.info(f"Success message shown to user {user_id}")
         return
     
     if action == "confirm_sponsor_no":
